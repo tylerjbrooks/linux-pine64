@@ -102,6 +102,12 @@ config SND_SOC_DAUDIO1_MACHINE
 	help
  	  Say Y or M if you want to add the daudio1 MACHEINE interface.
 
+config SND_SOC_DAUDIO_PCM5122_MACHINE
+	tristate "Asoc support for daudio pcm5122 machine"
+	select SND_SOC_SUNXI_TDM
+	help
+	  Say Y or M if you want to add the pcm512x MACHINE interface.
+
 config SND_SOC_DMIC
 	tristate "ASoC support for dmic."
 	depends on ARCH_SUN8IW10

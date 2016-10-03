@@ -57,6 +57,9 @@ obj-$(CONFIG_SND_SOC_DAUDIO0_MACHINE) += sunxi-snddaudio0.o
 #daudio1
 obj-$(CONFIG_SND_SOC_DAUDIO1_MACHINE) += sunxi-snddaudio1.o
 
+#daudio pcm5122
+obj-$(CONFIG_SND_SOC_DAUDIO_PCM5122) += sunxi_pcm5122.c
+
 #dmic
 obj-$(CONFIG_SND_SOC_DMIC) += sunxi-snddmic.o
 
