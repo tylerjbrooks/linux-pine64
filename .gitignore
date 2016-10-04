@@ -113,3 +113,9 @@ bImage
 rootfs.cpio.gz
 drivers/arisc/binary/arisc
 modules/eurasia_km/eurasiacon/binary2_sunxi_android_release/
+
+#
+#Miscellanious
+#
+sound/soc/sunxi/sunxi_pcm5122.c.sav
+
