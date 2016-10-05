@@ -202,7 +202,7 @@ static struct snd_soc_dai_link sunxi_pcm5122_dai = {
 	.name = "pcm5122",
 	.stream_name = "SUNXI-TDM0",
 	.cpu_dai_name = "sunxi_daudio",
-//	.codec_name = "pcm512x",
+	.codec_name = "pcm512x.2-004c",
 	.codec_dai_name = "pcm512x-hifi",
 	.platform_name = "sunxi-daudio",
 	.init = sunxi_pcm5122_init,
@@ -210,7 +210,7 @@ static struct snd_soc_dai_link sunxi_pcm5122_dai = {
 };
 
 static struct snd_soc_card sunxi_pcm5122_snd_card = {
-	.name = "snddaudiopcm5122",
+	.name = "sndpcm5122",
 	.dai_link = &sunxi_pcm5122_dai,
 	.num_links = 1,
 };
@@ -224,13 +224,13 @@ static int sunxi_pcm5122_audio_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 	sunxi_pcm5122_dai.cpu_dai_name = NULL;
 	sunxi_pcm5122_dai.cpu_of_node = of_parse_phandle(np,
-				"sunxi,daudio-pcm5122-controller", 0);
+				"sunxi,pcm5122-controller", 0);
 
 	printk("TJB: sunxi_pcm5122_audio_probe\n");
 
 	if (!sunxi_pcm5122_dai.cpu_of_node) {
 		dev_err(&pdev->dev,
-			"Property 'sunxi,daudio-pcm5122-controller' missing or invalid\n");
+			"Property 'sunxi,pcm5122-controller' missing or invalid\n");
 			ret = -EINVAL;
 	}
 	sunxi_pcm5122_dai.platform_name = NULL;
@@ -282,7 +282,7 @@ static int sunxi_pcm5122_audio_remove(struct platform_device *pdev)
 
 //#ifdef CONFIG_OF
 static const struct of_device_id sunxi_pcm5122_of_match[] = {
-	{ .compatible = "allwinner,sunxi-daudio-pcm5122-machine", },
+	{ .compatible = "allwinner,sunxi-pcm5122-machine", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, sunxi_pcm5122_of_match);
@@ -290,7 +290,7 @@ MODULE_DEVICE_TABLE(of, sunxi_pcm5122_of_match);
 
 static struct platform_driver sunxi_pcm5122_audio_driver = {
 	.driver         = {
-		.name   = "snddaudiopcm5122",
+		.name   = "sndpcm5122",
 		.owner  = THIS_MODULE,
 		.pm = &snd_soc_pm_ops,
 		.of_match_table = of_match_ptr(sunxi_pcm5122_of_match),
