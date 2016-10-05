@@ -35,9 +35,12 @@ static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	unsigned int pll_out = 0, dai_fmt = rtd->dai_link->dai_fmt;
+	struct sunxi_tdm_info  *sunxi_daudio = snd_soc_dai_get_drvdata(cpu_dai);
+	unsigned int pll_out = 0;
 	int ret;
 
+#if 0
+	unsigned int dai_fmt = rtd->dai_link->dai_fmt;
     printk("TJB sunxi_pcm5122hw_params dai_fmt %x\n", dai_fmt);
     printk("TJB sunxi_pcm5122hw_params rtd->dai_link %p\n", rtd->dai_link);
 	DBG("Enter::%s----%d\n", __FUNCTION__, __LINE__);
@@ -55,6 +58,7 @@ static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
 		printk("%s():failed to set the format for cpu side\n", __FUNCTION__);
 		return ret;
 	}
+#endif
 
     switch(params_rate(params)) {
     case 8000:
@@ -84,32 +88,47 @@ static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
             break;
     }
 
-	snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, 0);
-
-	/*Set the system clk for codec*/
-	ret=snd_soc_dai_set_sysclk(codec_dai, 0,pll_out,SND_SOC_CLOCK_IN);
-	if (ret < 0)
-	{
-		DBG("sunxi_pcm5122_hw_params_pcm5122:failed to set the sysclk for codec side\n");
+	/*Set the sysclk for the cpu side*/
+	ret=snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, 0);
+	if (ret < 0) {
+		DBG("sunxi_pcm5122_hw_params_pcm5122: failed to set sysclk for cpu side\n");
 		return ret;
 	}
 
-	//Codec is master, so is not need to set clkdiv for cpu.
-	if ((dai_fmt & SND_SOC_DAIFMT_MASTER_MASK) == SND_SOC_DAIFMT_CBM_CFM)
-		return 0;
+	/*Set the sysclk for the codec side*/
+	ret=snd_soc_dai_set_sysclk(codec_dai, 0,pll_out,SND_SOC_CLOCK_IN);
+	if (ret < 0)
+	{
+		DBG("sunxi_pcm5122_hw_params_pcm5122: failed to set sysclk for codec side\n");
+		return ret;
+	}
 
+	/*Codec is slave*/
+	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
+	if (ret < 0) {
+		pr_warn("[daudio0],the codec_dai set set_fmt failed.\n");
+	}
+
+	/*Cpu is master*/
+	ret = snd_soc_dai_set_fmt(cpu_dai, (sunxi_daudio->audio_format| (sunxi_daudio->signal_inversion <<8) | (sunxi_daudio->daudio_master <<12)));
+	if (ret < 0) {
+		return ret;
+	}
+
+	/*Set cpu clock divider*/
 	snd_soc_dai_set_clkdiv(cpu_dai, SUNXI_DAUDIO_DIV_BCLK, 64-1);//bclk = 2*32*lrck; 2*32fs
 	switch(params_rate(params)) {
         case 176400:		
 		case 192000:
 			snd_soc_dai_set_clkdiv(cpu_dai, SUNXI_DAUDIO_DIV_MCLK, 1);	
-        DBG("Enter:%s, %d, MCLK=%d BCLK=%d LRCK=%d\n",
-		__FUNCTION__,__LINE__,pll_out,pll_out/2,params_rate(params));			
+        	DBG("Enter:%s, %d, MCLK=%d BCLK=%d LRCK=%d\n",
+				__FUNCTION__,__LINE__,pll_out,pll_out/2,params_rate(params));			
 			break;
+
 		default:
 			snd_soc_dai_set_clkdiv(cpu_dai, SUNXI_DAUDIO_DIV_MCLK, 3);	
-        DBG("default:%s, %d, MCLK=%d BCLK=%d LRCK=%d\n",
-		__FUNCTION__,__LINE__,pll_out,pll_out/4,params_rate(params));			
+        	DBG("default:%s, %d, MCLK=%d BCLK=%d LRCK=%d\n",
+				__FUNCTION__,__LINE__,pll_out,pll_out/4,params_rate(params));			
 			break;
 	}
 
