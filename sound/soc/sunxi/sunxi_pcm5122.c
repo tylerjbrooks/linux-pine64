@@ -225,6 +225,9 @@ static int sunxi_pcm5122_audio_probe(struct platform_device *pdev)
 	sunxi_pcm5122_dai.cpu_dai_name = NULL;
 	sunxi_pcm5122_dai.cpu_of_node = of_parse_phandle(np,
 				"sunxi,daudio-pcm5122-controller", 0);
+
+	printk("TJB: sunxi_pcm5122_audio_probe\n");
+
 	if (!sunxi_pcm5122_dai.cpu_of_node) {
 		dev_err(&pdev->dev,
 			"Property 'sunxi,daudio-pcm5122-controller' missing or invalid\n");

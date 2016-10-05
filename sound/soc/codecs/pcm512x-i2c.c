@@ -26,6 +26,8 @@ static int pcm512x_i2c_probe(struct i2c_client *i2c,
 	struct regmap *regmap;
 	struct regmap_config config = pcm512x_regmap;
 
+	printk("TJB: pcm512x_i2c_probe\n");
+
 	/* msb needs to be set to enable auto-increment of addresses */
 	config.read_flag_mask = 0x80;
 	config.write_flag_mask = 0x80;

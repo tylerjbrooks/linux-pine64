@@ -25,6 +25,8 @@ static int pcm512x_spi_probe(struct spi_device *spi)
 	struct regmap *regmap;
 	int ret;
 
+	printk("TJB: pcm512x_spi_probe\n");
+
 	regmap = devm_regmap_init_spi(spi, &pcm512x_regmap);
 	if (IS_ERR(regmap)) {
 		ret = PTR_ERR(regmap);

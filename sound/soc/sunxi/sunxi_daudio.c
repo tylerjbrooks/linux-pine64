@@ -219,6 +219,8 @@ static int __init sunxi_daudio_platform_probe(struct platform_device *pdev)
 	struct sunxi_tdm_info  *sunxi_daudio;
 	u32 temp_val;
 
+	printk("TJB: sunxi_daudio_platform_probe\n");
+
 	sunxi_daudio = devm_kzalloc(&pdev->dev, sizeof(struct sunxi_tdm_info), GFP_KERNEL);
 	if (!sunxi_daudio) {
 		dev_err(&pdev->dev, "Can't allocate sunxi_daudio\n");

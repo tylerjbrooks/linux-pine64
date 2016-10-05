@@ -1422,6 +1422,8 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 	struct pcm512x_priv *pcm512x;
 	int i, ret;
 
+	printk("TJB: pcm512x_probe\n");
+
 	pcm512x = devm_kzalloc(dev, sizeof(struct pcm512x_priv), GFP_KERNEL);
 	if (!pcm512x)
 		return -ENOMEM;
