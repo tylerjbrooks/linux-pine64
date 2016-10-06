@@ -32,89 +32,75 @@
 static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
+	int ret  = 0;
+	u32 freq = 22579200;
+
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
 	struct sunxi_tdm_info  *sunxi_daudio = snd_soc_dai_get_drvdata(cpu_dai);
-	unsigned int pll_out = 0;
-	int ret;
-
-#if 0
-	unsigned int dai_fmt = rtd->dai_link->dai_fmt;
-    printk("TJB sunxi_pcm5122hw_params dai_fmt %x\n", dai_fmt);
-    printk("TJB sunxi_pcm5122hw_params rtd->dai_link %p\n", rtd->dai_link);
-	DBG("Enter::%s----%d\n", __FUNCTION__, __LINE__);
-
-	/* set codec DAI configuration */
-	ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
-	if (ret < 0) {
-		printk("%s():failed to set the format for codec side\n", __FUNCTION__);
-		return ret;
-	}
-
-	/* set cpu DAI configuration */
-	ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
-	if (ret < 0) {
-		printk("%s():failed to set the format for cpu side\n", __FUNCTION__);
-		return ret;
-	}
-#endif
-
-    switch(params_rate(params)) {
-    case 8000:
-    case 16000:
-    case 24000:
-    case 32000:
-    case 48000:
-            pll_out = 12288000;
-            break;
-    case 11025:
-    case 22050:
-    case 44100:
-            pll_out = 11289600;
-            break;
-    case 96000:
-    case 192000:	
-            pll_out = 12288000*2;
-            break;		
-    case 88200:
-    case 176400:	
-            pll_out = 11289600*2;
-            break;		
-    default:
-            DBG("Enter:%s, %d, Error rate=%d\n",__FUNCTION__,__LINE__,params_rate(params));
-            printk("TJB - invalid rate %d\n", params_rate(params));
-            return -EINVAL;
-            break;
-    }
-
-	/*Set the sysclk for the cpu side*/
-	ret=snd_soc_dai_set_sysclk(cpu_dai, 0, pll_out, 0);
-	if (ret < 0) {
-		DBG("sunxi_pcm5122_hw_params_pcm5122: failed to set sysclk for cpu side\n");
-		return ret;
-	}
-
-	/*Set the sysclk for the codec side*/
-	ret=snd_soc_dai_set_sysclk(codec_dai, 0,pll_out,SND_SOC_CLOCK_IN);
-	if (ret < 0)
-	{
-		DBG("sunxi_pcm5122_hw_params_pcm5122: failed to set sysclk for codec side\n");
-		return ret;
-	}
+	unsigned long sample_rate = params_rate(params);
 
 	/*Codec is slave*/
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0) {
-		pr_warn("[daudio0],the codec_dai set set_fmt failed.\n");
+		printk("TJB: sunxi_pcm5122_hw_params - failed codec is slave\n");
+		return ret;
 	}
 
 	/*Cpu is master*/
 	ret = snd_soc_dai_set_fmt(cpu_dai, (sunxi_daudio->audio_format| (sunxi_daudio->signal_inversion <<8) | (sunxi_daudio->daudio_master <<12)));
 	if (ret < 0) {
+		printk("TJB: sunxi_pcm5122_hw_params - failed cpu is master\n");
 		return ret;
 	}
 
+	/*Select sample frequency*/
+	switch (sample_rate) {
+		case 8000:
+		case 16000:
+		case 32000:
+		case 64000:
+		case 128000:
+		case 12000:
+		case 24000:
+		case 48000:
+		case 96000:
+		case 192000:
+			freq = 24576000;
+			break;
+	}
+	printk("TJB: sunxi_pcm5122_hw_params - selected freq = %d\n", freq);
+
+	/*Set the sysclk for the cpu side*/
+	ret = snd_soc_dai_set_sysclk(cpu_dai, 0 , freq, 0);
+	if (ret < 0) {
+		printk("TJB: sunxi_pcm5122_hw_params - failed set cpu freq\n");
+		return ret;
+	}
+
+//	/*Set the sysclk for the codec side*/
+//	ret = snd_soc_dai_set_sysclk(codec_dai, 0 , freq, 0);
+//	if (ret < 0) {
+//		printk("TJB: sunxi_pcm5122_hw_params - failed set codec freq\n");
+//		return ret;
+//	}
+
+	/*Set the cpu clock dividers*/
+	ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, sample_rate);
+	if (ret < 0) {
+		printk("TJB: sunxi_pcm5122_hw_params - failed set cpu clkdiv\n");
+		return ret;
+	}
+
+//	/*Set the codec clock dividers*/
+//	ret = snd_soc_dai_set_clkdiv(codec_dai, 0, sample_rate);
+//	if (ret < 0) {
+//		printk("TJB: sunxi_pcm5122_hw_params - failed set codec clkdiv\n");
+//		return ret;
+//	}
+
+#if 0
 	/*Set cpu clock divider*/
 	snd_soc_dai_set_clkdiv(cpu_dai, SUNXI_DAUDIO_DIV_BCLK, 64-1);//bclk = 2*32*lrck; 2*32fs
 	switch(params_rate(params)) {
@@ -131,6 +117,7 @@ static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
 				__FUNCTION__,__LINE__,pll_out,pll_out/4,params_rate(params));			
 			break;
 	}
+#endif
 
 	return 0;
 }
@@ -189,24 +176,39 @@ static int sunxi_pcm5122_dai_startup(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	struct snd_soc_dai *codec_dai = rtd->codec_dai;
 	struct snd_soc_dai *cpu_dai = rtd->cpu_dai;
-	unsigned int dai_fmt = rtd->dai_link->dai_fmt;
+	struct sunxi_tdm_info  *sunxi_daudio = snd_soc_dai_get_drvdata(cpu_dai);
 	int ret;
 
-    printk("TJB sunxi_pcm5122_dai_startup dai_fmt %x\n", dai_fmt);
+    printk("TJB: sunxi_pcm5122_dai_startup.\n");
 
+	/*Codec is slave*/
+	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
+	if (ret < 0) {
+		pr_warn("[daudio0],the codec_dai set set_fmt failed.\n");
+	}
+
+	/*Cpu is master*/
+	ret = snd_soc_dai_set_fmt(cpu_dai, (sunxi_daudio->audio_format| (sunxi_daudio->signal_inversion <<8) | (sunxi_daudio->daudio_master <<12)));
+	if (ret < 0) {
+		return ret;
+	}
+	
+#if 0
+	unsigned int dai_fmt = rtd->dai_link->dai_fmt;
+    printk("TJB sunxi_pcm5122_dai_startup dai_fmt %x\n", dai_fmt);
 	/* set codec DAI configuration */
 	ret = snd_soc_dai_set_fmt(codec_dai, dai_fmt);
 	if (ret < 0) {
 		printk("%s():failed to set the format for codec side\n", __FUNCTION__);
 		return ret;
 	}
-
 	/* set cpu DAI configuration */
 	ret = snd_soc_dai_set_fmt(cpu_dai, dai_fmt);
 	if (ret < 0) {
 		printk("%s():failed to set the format for cpu side\n", __FUNCTION__);
 		return ret;
 	}
+#endif
 	
 	return 0;
 }
