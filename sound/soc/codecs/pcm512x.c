@@ -90,6 +90,143 @@ static int pcm512x_regulator_event_##n(struct notifier_block *nb, \
 //PCM512x_REGULATOR_EVENT(1)
 //PCM512x_REGULATOR_EVENT(2)
 
+#define CFG_EXPERIMENT
+#ifdef CFG_EXPERIMENT
+typedef struct _tasregdefs
+{
+	int reg;
+	int val;
+} TASREGDEFS;
+static TASREGDEFS trd[] =
+{
+    { 0x03, 0x00 },
+    { 0x04, 0x01 },
+    { 0x05, 0x11 },
+    { 0x06, 0x00 },
+    { 0x07, 0x00 },
+    { 0x08, 0x00 },
+    { 0x09, 0x00 },
+    { 0x0a, 0x00 },
+    { 0x0b, 0x01 },
+    { 0x0c, 0x7c },
+    { 0x0d, 0x00 },
+    { 0x0e, 0x00 },
+    { 0x0f, 0x00 },
+    { 0x10, 0x00 },
+    { 0x11, 0x00 },
+    { 0x12, 0x00 },
+    { 0x13, 0x10 },
+    { 0x14, 0x00 },
+    { 0x15, 0x00 },
+    { 0x16, 0x00 },
+    { 0x17, 0x00 },
+    { 0x18, 0x00 },
+    { 0x19, 0x00 },
+    { 0x1a, 0x80 },
+    { 0x1b, 0x00 },
+    { 0x1c, 0x00 },
+    { 0x1d, 0x00 },
+    { 0x1e, 0x00 },
+    { 0x1f, 0x04 },
+    { 0x20, 0x00 },
+    { 0x21, 0x00 },
+    { 0x22, 0x00 },
+    { 0x23, 0x01 },
+    { 0x24, 0x00 },
+    { 0x25, 0x00 },
+    { 0x26, 0xf3 },
+    { 0x27, 0x04 },
+    { 0x28, 0x02 },
+    { 0x29, 0x00 },
+    { 0x2a, 0x11 },
+    { 0x2b, 0x01 },
+    { 0x2c, 0x00 },
+    { 0x2d, 0x00 },
+    { 0x2e, 0x00 },
+    { 0x2f, 0x00 },
+    { 0x30, 0x00 },
+    { 0x31, 0x00 },
+    { 0x32, 0x00 },
+    { 0x33, 0x00 },
+    { 0x34, 0x00 },
+    { 0x35, 0x00 },
+    { 0x36, 0x00 },
+    { 0x37, 0x00 },
+    { 0x38, 0x00 },
+    { 0x39, 0x00 },
+    { 0x3a, 0x00 },
+    { 0x3b, 0x00 },
+    { 0x3c, 0x00 },
+    { 0x3d, 0x80 },
+    { 0x3e, 0x80 },
+    { 0x3f, 0x22 },
+    { 0x40, 0x02 },
+    { 0x41, 0x04 },
+    { 0x42, 0x14 },
+    { 0x43, 0x05 },
+    { 0x44, 0x00 },
+    { 0x45, 0x00 },
+    { 0x46, 0x00 },
+    { 0x47, 0x00 },
+    { 0x48, 0x55 },
+    { 0x49, 0x00 },
+    { 0x4a, 0x00 },
+    { 0x4b, 0x00 },
+    { 0x4c, 0x00 },
+    { 0x4d, 0x00 },
+    { 0x4e, 0x00 },
+    { 0x4f, 0x00 },
+    { 0x50, 0x00 },
+    { 0x51, 0x00 },
+    { 0x52, 0x00 },
+    { 0x53, 0x00 },
+    { 0x54, 0x00 },
+    { 0x55, 0x00 },
+    { 0x56, 0x00 },
+    { 0x57, 0x00 },
+    { 0x58, 0x81 },
+    { 0x59, 0x11 },
+    { 0x5a, 0x00 },
+    { 0x5b, 0x36 },
+    { 0x5c, 0x00 },
+    { 0x5d, 0x40 },
+    { 0x5e, 0x00 },
+    { 0x5f, 0x00 },
+    { 0x60, 0x01 },
+    { 0x61, 0x10 },
+    { 0x62, 0x00 },
+    { 0x63, 0x00 },
+    { 0x64, 0x00 },
+    { 0x65, 0x01 },
+    { 0x66, 0x0f },
+    { 0x67, 0x03 },
+    { 0x68, 0x07 },
+    { 0x69, 0x10 },
+    { 0x6a, 0xff },
+    { 0x6b, 0xd3 },
+    { 0x6c, 0x33 },
+    { 0x6d, 0x00 },
+    { 0x6e, 0x00 },
+    { 0x6f, 0x01 },
+    { 0x70, 0x83 },
+    { 0x71, 0x04 },
+    { 0x72, 0x03 },
+    { 0x73, 0x00 },
+    { 0x74, 0x04 },
+    { 0x75, 0x00 },
+    { 0x76, 0x85 },
+    { 0x77, 0x21 },
+    { 0x78, 0x00 },
+    { 0x79, 0x00 },
+    { 0x7a, 0x00 },
+    { 0x7b, 0x00 },
+    { 0x7c, 0x00 },
+    { 0x7d, 0x00 },
+    { 0x7e, 0x00 },
+    { 0x7f, 0x00 },
+};
+#endif
+
 static const struct reg_default pcm512x_reg_defaults[] = {
 	{ PCM512x_RESET,             0x00 },
 	{ PCM512x_POWER,             0x00 },
@@ -196,6 +333,8 @@ static bool pcm512x_readable(struct device *dev, unsigned int reg)
 	case PCM512x_RATE_DET_4:
 	case PCM512x_CLOCK_STATUS:
 	case PCM512x_ANALOG_MUTE_DET:
+	case PCM512x_SHORT_DET:
+	case PCM512x_POWER_STATE:
 	case PCM512x_GPIN:
 	case PCM512x_DIGITAL_MUTE_DET:
 	case PCM512x_OUTPUT_AMPLITUDE:
@@ -229,6 +368,8 @@ static bool pcm512x_volatile(struct device *dev, unsigned int reg)
 	case PCM512x_GPIN:
 	case PCM512x_DIGITAL_MUTE_DET:
 	case PCM512x_CRAM_CTRL:
+	case PCM512x_SHORT_DET:
+	case PCM512x_POWER_STATE:
 		return true;
 	default:
 		/* There are 256 raw register addresses */
@@ -1172,7 +1313,6 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 				"Failed to enable slave mode: %d\n", ret);
 			return ret;
 		}
-
 		ret = regmap_update_bits(pcm512x->regmap, PCM512x_ERROR_DETECT,
 					 PCM512x_DCAS, 0);
 		if (ret != 0) {
@@ -1187,28 +1327,38 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 			dev_err(codec->dev, "Failed to set frame size: %d\n", ret);
 			return ret;
 		}
-		ret = regmap_update_bits(pcm512x->regmap, PCM512x_SYNCHRONIZE,
-				 PCM512x_RQSY, PCM512x_RQSY_HALT);
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_PLL_EN,
+					 PCM512x_PLLE, 0);
 		if (ret != 0) {
-			dev_err(codec->dev, "Failed to halt clocks: %d\n", ret);
+			dev_err(codec->dev, "Failed to disable pll: %d\n", ret);
 			return ret;
 		}
 
-		ret = regmap_update_bits(pcm512x->regmap, PCM512x_SYNCHRONIZE,
-				 PCM512x_RQSY, PCM512x_RQSY_RESUME);
-		if (ret != 0) {
-			dev_err(codec->dev, "Failed to resume clocks: %d\n", ret);
-			return ret;
+#ifdef CFG_EXPERIMENT
+	{
+		int x;
+		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ )
+		{
+			ret = regmap_write(pcm512x->regmap, PCM512x_PAGE_BASE(0) + trd[x].reg, trd[x].val);
+			if (ret != 0) {
+				printk("Failed to set reg[%d] = 0x%x.  Error = %d\n", trd[x].reg, trd[x].val, ret);
+				return ret;
+			}
 		}
+	}
 
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_MUTE, &x);
 	printk("TJB: %d=%s():%d: PCM512x_MUTE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_PLL_EN, &x);
+	printk("TJB: %d=%s():%d: PCM512x_PLL_EN=0x%x\n", r,__FUNCTION__, __LINE__, x); }
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_GPIO_EN, &x);
 	printk("TJB: %d=%s():%d: PCM512x_GPIO_EN=0x%x\n", r,__FUNCTION__, __LINE__, x); }
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_BCLK_LRCLK_CFG, &x);
 	printk("TJB: %d=%s():%d: PCM512x_BCLK_LRCLK_CFG=0x%x\n", r,__FUNCTION__, __LINE__, x); }
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_MASTER_MODE, &x);
 	printk("TJB: %d=%s():%d: PCM512x_MASTER_MODE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DAC_REF, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DAC_REF=0x%x\n", r,__FUNCTION__, __LINE__, x); }
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_FS_SPEED_MODE, &x);
 	printk("TJB: %d=%s():%d: PCM512x_FS_SPEED_MODE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_ERROR_DETECT, &x);
@@ -1253,6 +1403,22 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_MUTE_DET=0x%x\n", r,__FUNCTION__, __LINE__, x); }
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_POWER_STATE, &x);
 	printk("TJB: %d=%s():%d: PCM512x_POWER_STATE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+#endif
+
+
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_SYNCHRONIZE,
+				 PCM512x_RQSY, PCM512x_RQSY_HALT);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to halt clocks: %d\n", ret);
+			return ret;
+		}
+
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_SYNCHRONIZE,
+				 PCM512x_RQSY, PCM512x_RQSY_RESUME);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to resume clocks: %d\n", ret);
+			return ret;
+		}
 
 		return 0;
 	case SND_SOC_DAIFMT_CBM_CFM:
