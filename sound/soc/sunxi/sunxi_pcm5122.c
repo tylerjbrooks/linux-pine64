@@ -248,6 +248,7 @@ static int sunxi_pcm5122_audio_probe(struct platform_device *pdev)
 				"sunxi,pcm5122-controller", 0);
 
 	printk("TJB: sunxi_pcm5122_audio_probe\n");
+	printk("TJB:sunxi_pcm5122_dai.cpu_of_node = %p\n", sunxi_pcm5122_dai.cpu_of_node);
 
 	if (!sunxi_pcm5122_dai.cpu_of_node) {
 		dev_err(&pdev->dev,

@@ -269,4 +269,6 @@ extern const struct regmap_config pcm512x_regmap;
 int pcm512x_probe(struct device *dev, struct regmap *regmap);
 void pcm512x_remove(struct device *dev);
 
+void pcm512x_set_i2c(struct i2c_client *i2c);
+
 #endif

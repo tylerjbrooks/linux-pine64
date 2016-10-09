@@ -36,6 +36,8 @@ static int pcm512x_i2c_probe(struct i2c_client *i2c,
 	if (IS_ERR(regmap))
 		return PTR_ERR(regmap);
 
+	pcm512x_set_i2c(i2c);
+
 	return pcm512x_probe(&i2c->dev, regmap);
 }
 

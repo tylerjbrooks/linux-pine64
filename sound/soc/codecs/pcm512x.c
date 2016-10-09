@@ -67,7 +67,6 @@ struct pcm512x_priv {
 	unsigned long overclock_pll;
 	unsigned long overclock_dac;
 	unsigned long overclock_dsp;
-	struct device_node *slave1;
 };
 
 /*
@@ -94,6 +93,7 @@ static int pcm512x_regulator_event_##n(struct notifier_block *nb, \
 
 #define CFG_EXPERIMENT
 #ifdef CFG_EXPERIMENT
+static struct i2c_client *the_i2c;
 typedef struct _tasregdefs
 {
 	int reg;
@@ -1340,6 +1340,9 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 #ifdef CFG_EXPERIMENT
 	{
 		int x;
+
+		printk("\nTJB: Setting registers for i2c.0x00%x\n", the_i2c->addr);
+
 		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ )
 		{
 			ret = regmap_write(pcm512x->regmap, PCM512x_PAGE_BASE(0) + trd[x].reg, trd[x].val);
@@ -1406,6 +1409,85 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_MUTE_DET=0x%x\n", r,__FUNCTION__, __LINE__, x); }
 	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_POWER_STATE, &x);
 	printk("TJB: %d=%s():%d: PCM512x_POWER_STATE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+
+
+	{
+		int x;
+		unsigned short sav_addr = the_i2c->addr;
+
+		the_i2c->addr = 0x4e;
+
+		printk("\nTJB: Setting registers for i2c.0x00%x\n", the_i2c->addr);
+
+		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ )
+		{
+			ret = regmap_write(pcm512x->regmap, PCM512x_PAGE_BASE(0) + trd[x].reg, trd[x].val);
+			if (ret != 0) {
+				printk("Failed to set reg[%d] = 0x%x.  Error = %d\n", trd[x].reg, trd[x].val, ret);
+				return ret;
+			}
+		}
+
+		the_i2c->addr = sav_addr;
+	}
+
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_MUTE, &x);
+	printk("TJB: %d=%s():%d: PCM512x_MUTE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_PLL_EN, &x);
+	printk("TJB: %d=%s():%d: PCM512x_PLL_EN=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_GPIO_EN, &x);
+	printk("TJB: %d=%s():%d: PCM512x_GPIO_EN=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_BCLK_LRCLK_CFG, &x);
+	printk("TJB: %d=%s():%d: PCM512x_BCLK_LRCLK_CFG=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_MASTER_MODE, &x);
+	printk("TJB: %d=%s():%d: PCM512x_MASTER_MODE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DAC_REF, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DAC_REF=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_FS_SPEED_MODE, &x);
+	printk("TJB: %d=%s():%d: PCM512x_FS_SPEED_MODE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_ERROR_DETECT, &x);
+	printk("TJB: %d=%s():%d: PCM512x_ERROR_DETECT=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_I2S_1, &x);
+	printk("TJB: %d=%s():%d: PCM512x_I2S_1=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_I2S_2, &x);
+	printk("TJB: %d=%s():%d: PCM512x_I2S_2=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DAC_ROUTING, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DAC_ROUTING=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DSP_PROGRAM, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DSP_PROGRAM=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_CLKDET, &x);
+	printk("TJB: %d=%s():%d: PCM512x_CLKDET=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_AUTO_MUTE, &x);
+	printk("TJB: %d=%s():%d: PCM512x_AUTO_MUTE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DIGITAL_VOLUME_1, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_VOLUME_1=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DIGITAL_VOLUME_2, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_VOLUME_2=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DIGITAL_VOLUME_3, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_VOLUME_3=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DIGITAL_MUTE_1, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_MUTE_1=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DIGITAL_MUTE_2, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_MUTE_2=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DIGITAL_MUTE_3, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_MUTE_3=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_RATE_DET_1, &x);
+	printk("TJB: %d=%s():%d: PCM512x_RATE_DET_1=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_RATE_DET_2, &x);
+	printk("TJB: %d=%s():%d: PCM512x_RATE_DET_2=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_RATE_DET_3, &x);
+	printk("TJB: %d=%s():%d: PCM512x_RATE_DET_3=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_RATE_DET_4, &x);
+	printk("TJB: %d=%s():%d: PCM512x_RATE_DET_4=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_CLOCK_STATUS, &x);
+	printk("TJB: %d=%s():%d: PCM512x_CLOCK_STATUS=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_ANALOG_MUTE_DET, &x);
+	printk("TJB: %d=%s():%d: PCM512x_ANALOG_MUTE_DET=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_DIGITAL_MUTE_DET, &x);
+	printk("TJB: %d=%s():%d: PCM512x_DIGITAL_MUTE_DET=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+	{unsigned int x = 0; int r = regmap_read(pcm512x->regmap, PCM512x_POWER_STATE, &x);
+	printk("TJB: %d=%s():%d: PCM512x_POWER_STATE=0x%x\n", r,__FUNCTION__, __LINE__, x); }
+
 #endif
 
 
@@ -1659,18 +1741,26 @@ const struct regmap_config pcm512x_regmap = {
 };
 EXPORT_SYMBOL_GPL(pcm512x_regmap);
 
+void pcm512x_set_i2c(struct i2c_client *i2c)
+{
+	printk("TJB: pcm512x_set_i2c\n");
+	the_i2c = i2c;
+}
+EXPORT_SYMBOL_GPL(pcm512x_set_i2c);
+
 int pcm512x_probe(struct device *dev, struct regmap *regmap)
 {
 	struct pcm512x_priv *pcm512x;
-	struct device_node *slave;
-	int i, ret, err;
+	int i, ret;
 
 	printk("TJB: pcm512x_probe\n");
 
 	pcm512x = devm_kzalloc(dev, sizeof(struct pcm512x_priv), GFP_KERNEL);
 	if (!pcm512x)
 		return -ENOMEM;
-	
+
+#if 0
+	struct device_node *slave;
 	slave = of_parse_phandle(dev->of_node, "slave1", 0);
 	if (slave) {
 		pcm512x->slave1 = of_find_i2c_adapter_by_node(slave);
@@ -1681,6 +1771,7 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 		}
 		of_node_put(slave);
 	}
+#endif
 
 	dev_set_drvdata(dev, pcm512x);
 	pcm512x->regmap = regmap;
