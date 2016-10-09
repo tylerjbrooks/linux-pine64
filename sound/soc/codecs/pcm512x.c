@@ -24,6 +24,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/gcd.h>
 #include <linux/of.h>
+#include <linux/of_i2c.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/pcm_params.h>
@@ -66,6 +67,7 @@ struct pcm512x_priv {
 	unsigned long overclock_pll;
 	unsigned long overclock_dac;
 	unsigned long overclock_dsp;
+	struct device_node *slave1;
 };
 
 /*
@@ -1660,13 +1662,25 @@ EXPORT_SYMBOL_GPL(pcm512x_regmap);
 int pcm512x_probe(struct device *dev, struct regmap *regmap)
 {
 	struct pcm512x_priv *pcm512x;
-	int i, ret;
+	struct device_node *slave;
+	int i, ret, err;
 
 	printk("TJB: pcm512x_probe\n");
 
 	pcm512x = devm_kzalloc(dev, sizeof(struct pcm512x_priv), GFP_KERNEL);
 	if (!pcm512x)
 		return -ENOMEM;
+	
+	slave = of_parse_phandle(dev->of_node, "slave1", 0);
+	if (slave) {
+		pcm512x->slave1 = of_find_i2c_adapter_by_node(slave);
+		if (!pcm512x->slave1) {
+			err = -EPROBE_DEFER;
+			of_node_put(slave);
+			return err;
+		}
+		of_node_put(slave);
+	}
 
 	dev_set_drvdata(dev, pcm512x);
 	pcm512x->regmap = regmap;
