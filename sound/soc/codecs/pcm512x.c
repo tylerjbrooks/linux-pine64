@@ -160,8 +160,8 @@ static TASREGDEFS trd[] =
     { 0x3a, 0x00 },
     { 0x3b, 0x00 },
     { 0x3c, 0x00 },
-    { 0x3d, 0x80 },
-    { 0x3e, 0x80 },
+    { 0x3d, 0x90 },
+    { 0x3e, 0x90 },
     { 0x3f, 0x22 },
     { 0x40, 0x02 },
     { 0x41, 0x04 },
@@ -1343,8 +1343,24 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 
 		printk("\nTJB: Setting registers for i2c.0x00%x\n", the_i2c->addr);
 
-		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ )
-		{
+/***
+		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ ) {
+			if (trd[x].reg == 0x03) {	// mute register
+				ret = regmap_write(pcm512x->regmap, PCM512x_MUTE, 0x11);
+				if (ret != 0) {
+					printk("Failed to mute.  Error = %d\n", ret);
+					return ret;
+				}
+			} else {
+				ret = regmap_write(pcm512x->regmap, PCM512x_PAGE_BASE(0) + trd[x].reg, trd[x].val);
+				if (ret != 0) {
+					printk("Failed to set reg[%d] = 0x%x.  Error = %d\n", trd[x].reg, trd[x].val, ret);
+					return ret;
+				}
+			}
+		}
+***/
+		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ ) {
 			ret = regmap_write(pcm512x->regmap, PCM512x_PAGE_BASE(0) + trd[x].reg, trd[x].val);
 			if (ret != 0) {
 				printk("Failed to set reg[%d] = 0x%x.  Error = %d\n", trd[x].reg, trd[x].val, ret);
@@ -1419,14 +1435,37 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 
 		printk("\nTJB: Setting registers for i2c.0x00%x\n", the_i2c->addr);
 
-		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ )
-		{
+
+		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ ) {
+			if (trd[x].reg == 61) {	
+				ret = regmap_write(pcm512x->regmap, PCM512x_DIGITAL_VOLUME_2, 0x72);
+				if (ret != 0) {
+					printk("Failed to digital volume 2.  Error = %d\n", ret);
+					return ret;
+				}
+			} else if (trd[x].reg == 62) {	
+				ret = regmap_write(pcm512x->regmap, PCM512x_DIGITAL_VOLUME_3, 0x72);
+				if (ret != 0) {
+					printk("Failed to digital volume 3.  Error = %d\n", ret);
+					return ret;
+				}
+			} else {
+				ret = regmap_write(pcm512x->regmap, PCM512x_PAGE_BASE(0) + trd[x].reg, trd[x].val);
+				if (ret != 0) {
+					printk("Failed to set reg[%d] = 0x%x.  Error = %d\n", trd[x].reg, trd[x].val, ret);
+					return ret;
+				}
+			}
+		}
+/***
+		for( x = 0; x < sizeof(trd)/sizeof(TASREGDEFS); x++ ) {
 			ret = regmap_write(pcm512x->regmap, PCM512x_PAGE_BASE(0) + trd[x].reg, trd[x].val);
 			if (ret != 0) {
 				printk("Failed to set reg[%d] = 0x%x.  Error = %d\n", trd[x].reg, trd[x].val, ret);
 				return ret;
 			}
 		}
+***/
 
 		the_i2c->addr = sav_addr;
 	}
