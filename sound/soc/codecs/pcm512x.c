@@ -53,6 +53,9 @@ static const char * const pcm512x_supply_names[PCM512x_NUM_SUPPLIES] = {
 
 struct pcm512x_priv {
 	struct regmap *regmap;
+	struct i2c_client *woofer_device;
+	struct i2c_adapter *woofer_adapter;
+	struct i2c_adapter *tweeter;
 	struct clk *sclk;
 	//struct regulator_bulk_data supplies[PCM512x_NUM_SUPPLIES];
 	//struct notifier_block supply_nb[PCM512x_NUM_SUPPLIES];
@@ -609,12 +612,14 @@ static unsigned long pcm512x_dac_max(struct pcm512x_priv *pcm512x,
 	return rate + rate * pcm512x->overclock_dac / 100;
 }
 
+/***
 static unsigned long pcm512x_sck_max(struct pcm512x_priv *pcm512x)
 {
 	if (!pcm512x->pll_out)
 		return 25000000;
 	return pcm512x_pll_max(pcm512x);
 }
+***/
 
 static unsigned long pcm512x_ncp_target(struct pcm512x_priv *pcm512x,
 					unsigned long dac_rate)
@@ -1782,7 +1787,7 @@ EXPORT_SYMBOL_GPL(pcm512x_regmap);
 
 void pcm512x_set_i2c(struct i2c_client *i2c)
 {
-	printk("TJB: pcm512x_set_i2c\n");
+	printk("TJB: pcm512x_set_i2c: addr = 0x%x\n", i2c->addr);
 	the_i2c = i2c;
 }
 EXPORT_SYMBOL_GPL(pcm512x_set_i2c);
@@ -1790,30 +1795,49 @@ EXPORT_SYMBOL_GPL(pcm512x_set_i2c);
 int pcm512x_probe(struct device *dev, struct regmap *regmap)
 {
 	struct pcm512x_priv *pcm512x;
-	int i, ret;
+	struct device_node *woofer;
+	struct device_node *tweeter;
+	int ret;
 
-	printk("TJB: pcm512x_probe\n");
+	printk("TJB: pcm512x_probe: dev->of_node=%s\n", dev->of_node->name);
+	printk("TJB: pcm512x_probe: dev->driver-name=%s\n", dev->driver->name);
 
+	//	Private Driver Memeory
 	pcm512x = devm_kzalloc(dev, sizeof(struct pcm512x_priv), GFP_KERNEL);
-	if (!pcm512x)
+	if (!pcm512x) {
 		return -ENOMEM;
-
-#if 0
-	struct device_node *slave;
-	slave = of_parse_phandle(dev->of_node, "slave1", 0);
-	if (slave) {
-		pcm512x->slave1 = of_find_i2c_adapter_by_node(slave);
-		if (!pcm512x->slave1) {
-			err = -EPROBE_DEFER;
-			of_node_put(slave);
-			return err;
-		}
-		of_node_put(slave);
 	}
-#endif
-
 	dev_set_drvdata(dev, pcm512x);
 	pcm512x->regmap = regmap;
+
+	//	Find the Woofer i2c client
+	woofer = of_parse_phandle(dev->of_node, "woofer", 0);
+	if (woofer) {
+		printk("TJB: pcm512x_probe: woofer phandle = %p\n", woofer);
+		pcm512x->woofer_device = of_find_i2c_device_by_node(woofer);
+		printk("TJB: pcm512x_probe: woofer_device = %p\n", pcm512x->woofer_device);
+		printk("TJB: pcm512x_probe: woofer_device->adapter = %p\n", pcm512x->woofer_device->adapter);
+		pcm512x->woofer_adapter = of_find_i2c_adapter_by_node(woofer);
+		printk("TJB: pcm512x_probe: woofer_adapter = %p\n", pcm512x->woofer_adapter);
+		if (!pcm512x->woofer_adapter) {
+			of_node_put(woofer);
+			return -EPROBE_DEFER;
+		}
+		of_node_put(woofer);
+	}
+
+	//	Find the Tweeter i2c client
+	tweeter = of_parse_phandle(dev->of_node, "tweeter", 0);
+	if (tweeter) {
+		printk("TJB: pcm512x_probe: tweeter phandle = %p\n", tweeter);
+		pcm512x->tweeter = of_find_i2c_adapter_by_node(tweeter);
+		if (!pcm512x->tweeter) {
+			of_node_put(tweeter);
+			return -EPROBE_DEFER;
+		}
+		of_node_put(tweeter);
+	}
+
 
 #if 0
 	for (i = 0; i < ARRAY_SIZE(pcm512x->supplies); i++)
@@ -1849,8 +1873,7 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 #endif
 
 	/* Reset the device, verifying I/O in the process for I2C */
-	ret = regmap_write(regmap, PCM512x_RESET,
-			   PCM512x_RSTM | PCM512x_RSTR);
+	ret = regmap_write(regmap, PCM512x_RESET, PCM512x_RSTM | PCM512x_RSTR);
 	if (ret != 0) {
 		dev_err(dev, "Failed to reset device: %d\n", ret);
 		goto err;
@@ -1923,8 +1946,7 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 	}
 #endif
 
-	ret = snd_soc_register_codec(dev, &pcm512x_codec_driver,
-				    &pcm512x_dai, 1);
+	ret = snd_soc_register_codec(dev, &pcm512x_codec_driver, &pcm512x_dai, 1);
 	if (ret != 0) {
 		dev_err(dev, "Failed to register CODEC: %d\n", ret);
 		goto err_pm;
