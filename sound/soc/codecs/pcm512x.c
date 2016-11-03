@@ -53,9 +53,9 @@ static const char * const pcm512x_supply_names[PCM512x_NUM_SUPPLIES] = {
 
 struct pcm512x_priv {
 	struct regmap *regmap;
-	struct i2c_client *woofer_device;
-	struct i2c_adapter *woofer_adapter;
-	struct i2c_adapter *tweeter;
+	struct i2c_client *woofer;
+	struct i2c_client *tweeter;
+
 	struct clk *sclk;
 	//struct regulator_bulk_data supplies[PCM512x_NUM_SUPPLIES];
 	//struct notifier_block supply_nb[PCM512x_NUM_SUPPLIES];
@@ -1802,6 +1802,9 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 	printk("TJB: pcm512x_probe: dev->of_node=%s\n", dev->of_node->name);
 	printk("TJB: pcm512x_probe: dev->driver-name=%s\n", dev->driver->name);
 
+	printk("TJB: pcm512x_probe: i2c_client* dev=%p\n", 
+		of_find_i2c_device_by_node(dev->of_node) );
+
 	//	Private Driver Memeory
 	pcm512x = devm_kzalloc(dev, sizeof(struct pcm512x_priv), GFP_KERNEL);
 	if (!pcm512x) {
@@ -1813,13 +1816,13 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 	//	Find the Woofer i2c client
 	woofer = of_parse_phandle(dev->of_node, "woofer", 0);
 	if (woofer) {
+		struct pcm512x_priv *priv;
+
 		printk("TJB: pcm512x_probe: woofer phandle = %p\n", woofer);
-		pcm512x->woofer_device = of_find_i2c_device_by_node(woofer);
-		printk("TJB: pcm512x_probe: woofer_device = %p\n", pcm512x->woofer_device);
-		printk("TJB: pcm512x_probe: woofer_device->adapter = %p\n", pcm512x->woofer_device->adapter);
-		pcm512x->woofer_adapter = of_find_i2c_adapter_by_node(woofer);
-		printk("TJB: pcm512x_probe: woofer_adapter = %p\n", pcm512x->woofer_adapter);
-		if (!pcm512x->woofer_adapter) {
+		pcm512x->woofer = of_find_i2c_device_by_node(woofer);
+		printk("TJB: pcm512x_probe: i2c_client* woofer = %p\n", pcm512x->woofer);
+		priv = dev_get_drvdata(&pcm512x->woofer->dev);
+		if (!priv) {
 			of_node_put(woofer);
 			return -EPROBE_DEFER;
 		}
@@ -1829,9 +1832,13 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 	//	Find the Tweeter i2c client
 	tweeter = of_parse_phandle(dev->of_node, "tweeter", 0);
 	if (tweeter) {
+		struct pcm512x_priv *priv;
+
 		printk("TJB: pcm512x_probe: tweeter phandle = %p\n", tweeter);
-		pcm512x->tweeter = of_find_i2c_adapter_by_node(tweeter);
-		if (!pcm512x->tweeter) {
+		pcm512x->tweeter = of_find_i2c_device_by_node(tweeter);
+		printk("TJB: pcm512x_probe: i2c_client* tweeter = %p\n", pcm512x->tweeter);
+		priv = dev_get_drvdata(&pcm512x->tweeter->dev);
+		if (!priv) {
 			of_node_put(tweeter);
 			return -EPROBE_DEFER;
 		}
