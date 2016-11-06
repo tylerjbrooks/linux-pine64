@@ -51,10 +51,15 @@ static const char * const pcm512x_supply_names[PCM512x_NUM_SUPPLIES] = {
 	"CPVDD",
 };
 
+#define HASMID(p)		((p)->regmap_mid != 0)
+#define HASWOOFER(p)	((p)->regmap_woofer != 0)
+#define HASTWEETER(p)	((p)->regmap_tweeter != 0)
+#define ISCODEC(p)		(HASMID(p) && HASWOOFER(p))
 struct pcm512x_priv {
 	struct regmap *regmap;
-	struct i2c_client *woofer;
-	struct i2c_client *tweeter;
+	struct regmap *regmap_mid;
+	struct regmap *regmap_woofer;
+	struct regmap *regmap_tweeter;
 
 	struct clk *sclk;
 	//struct regulator_bulk_data supplies[PCM512x_NUM_SUPPLIES];
@@ -1795,54 +1800,57 @@ EXPORT_SYMBOL_GPL(pcm512x_set_i2c);
 int pcm512x_probe(struct device *dev, struct regmap *regmap)
 {
 	struct pcm512x_priv *pcm512x;
-	struct device_node *woofer;
-	struct device_node *tweeter;
+	struct device_node *dn;
 	int ret;
 
 	printk("TJB: pcm512x_probe: dev->of_node=%s\n", dev->of_node->name);
 	printk("TJB: pcm512x_probe: dev->driver-name=%s\n", dev->driver->name);
-
 	printk("TJB: pcm512x_probe: i2c_client* dev=%p\n", 
 		of_find_i2c_device_by_node(dev->of_node) );
 
-	//	Private Driver Memeory
+	//	Allocate private driver memory
 	pcm512x = devm_kzalloc(dev, sizeof(struct pcm512x_priv), GFP_KERNEL);
 	if (!pcm512x) {
 		return -ENOMEM;
 	}
 	dev_set_drvdata(dev, pcm512x);
 	pcm512x->regmap = regmap;
+	pcm512x->regmap_mid = regmap;
 
-	//	Find the Woofer i2c client
-	woofer = of_parse_phandle(dev->of_node, "woofer", 0);
-	if (woofer) {
+	//	Find the 'digispeaker,woofer' i2c client.  Get its regmap.
+	dn = of_parse_phandle(dev->of_node, "digispeaker,woofer", 0);
+	if (dn) {
 		struct pcm512x_priv *priv;
-
-		printk("TJB: pcm512x_probe: woofer phandle = %p\n", woofer);
-		pcm512x->woofer = of_find_i2c_device_by_node(woofer);
-		printk("TJB: pcm512x_probe: i2c_client* woofer = %p\n", pcm512x->woofer);
-		priv = dev_get_drvdata(&pcm512x->woofer->dev);
+		struct i2c_client *i2c = of_find_i2c_device_by_node(dn);
+		if (!i2c) {
+			of_node_put(dn);
+			return -EINVAL;
+		}
+		priv = dev_get_drvdata(&i2c->dev);
 		if (!priv) {
-			of_node_put(woofer);
+			of_node_put(dn);
 			return -EPROBE_DEFER;
 		}
-		of_node_put(woofer);
+		pcm512x->regmap_woofer = priv->regmap;
+		of_node_put(dn);
 	}
 
-	//	Find the Tweeter i2c client
-	tweeter = of_parse_phandle(dev->of_node, "tweeter", 0);
-	if (tweeter) {
+	//	Find the 'digispeaker,tweeter i2c client
+	dn = of_parse_phandle(dev->of_node, "digispeaker,tweeter", 0);
+	if (dn) {
 		struct pcm512x_priv *priv;
-
-		printk("TJB: pcm512x_probe: tweeter phandle = %p\n", tweeter);
-		pcm512x->tweeter = of_find_i2c_device_by_node(tweeter);
-		printk("TJB: pcm512x_probe: i2c_client* tweeter = %p\n", pcm512x->tweeter);
-		priv = dev_get_drvdata(&pcm512x->tweeter->dev);
+		struct i2c_client *i2c = of_find_i2c_device_by_node(dn);
+		if (!i2c) {
+			of_node_put(dn);
+			return -EINVAL;
+		}
+		priv = dev_get_drvdata(&i2c->dev);
 		if (!priv) {
-			of_node_put(tweeter);
+			of_node_put(dn);
 			return -EPROBE_DEFER;
 		}
-		of_node_put(tweeter);
+		pcm512x->regmap_tweeter = priv->regmap;
+		of_node_put(dn);
 	}
 
 

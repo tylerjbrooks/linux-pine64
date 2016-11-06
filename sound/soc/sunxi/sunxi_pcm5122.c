@@ -90,9 +90,6 @@ static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
 	return 0;
 }
 
-/*
- * Logic for a pcm5122 as connected on a rockchip board.
- */
 static int sunxi_pcm5122_init(struct snd_soc_pcm_runtime *rtd)
 {
 	printk("TJB: Enter sunxi_pcm5122_init\n");
@@ -126,33 +123,34 @@ static int sunxi_pcm5122_audio_probe(struct platform_device *pdev)
 
 	printk("TJB: Enter sunxi_pcm5122_audio_probe: pdev->name = %s\n", pdev->name);
 
-	card->dev = &pdev->dev;
+	//	Link the CPU
 	sunxi_pcm5122_dai.cpu_dai_name = NULL;
 	sunxi_pcm5122_dai.cpu_of_node = of_parse_phandle(np, "sunxi,pcm5122-controller", 0);
-
 	if (!sunxi_pcm5122_dai.cpu_of_node) {
 		dev_err(&pdev->dev,
 			"Property 'sunxi,pcm5122-controller' missing or invalid\n");
-			ret = -EINVAL;
+		return -EINVAL;
 	}
 
+	//	Link the platform
 	sunxi_pcm5122_dai.platform_name = NULL;
 	sunxi_pcm5122_dai.platform_of_node = sunxi_pcm5122_dai.cpu_of_node;
 
-	if (sunxi_pcm5122_dai.codec_dai_name == NULL
-			&& sunxi_pcm5122_dai.codec_name == NULL) {
-			int r;
-			r = codec_utils_probe(pdev);
-			sunxi_pcm5122_dai.codec_dai_name = pdev->name;
-			sunxi_pcm5122_dai.codec_name 	= pdev->name;
-			printk("TJB: sunxi_pcm5122_audio_probe: codec_utils_probe() = %i\n", r);
-			printk("TJB: sunxi_pcm5122_audio_probe: pdev->name = %s\n", pdev->name);
+	//	Link the codec
+	sunxi_pcm5122_dai.codec_dai_name = NULL;
+	sunxi_pcm5122_dai.codec_of_node = of_parse_phandle(np, "digispeaker,codec", 0);
+	if (!sunxi_pcm5122_dai.codec_of_node) {
+		dev_err(&pdev->dev,
+			"Property 'digispeaker,codec' missing or invalid");
+		return -EINVAL;
 	}
+
+	//	Register the sound card
+	card->dev = &pdev->dev;
 	ret = snd_soc_register_card(card);
 	if (ret) {
 		dev_err(&pdev->dev, "snd_soc_register_card() failed: %d\n", ret);
 	}
-
 	return ret;
 }
 
