@@ -32,6 +32,7 @@
 
 #include "pcm512x.h"
 
+#if 0
 #define DIV_ROUND_CLOSEST_ULL(x, divisor)(		\
 {							\
 	typeof(divisor) __d = divisor;			\
@@ -99,7 +100,6 @@ static int pcm512x_regulator_event_##n(struct notifier_block *nb, \
 //PCM512x_REGULATOR_EVENT(1)
 //PCM512x_REGULATOR_EVENT(2)
 
-#define CFG_EXPERIMENT
 #ifdef CFG_EXPERIMENT
 static struct i2c_client *the_i2c;
 typedef struct _tasregdefs
@@ -692,6 +692,7 @@ static int pcm512x_hw_rule_rate(struct snd_pcm_hw_params *params,
 				   ARRAY_SIZE(ranges), ranges, 0);
 #endif				  
 }
+
 
 static int pcm512x_dai_startup_master(struct snd_pcm_substream *substream,
 				      struct snd_soc_dai *dai)
@@ -1708,33 +1709,417 @@ static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 
 	return 0;
 }
+#endif
 
-/*
- * Note that this should be called from init rather than from hw_params.
- */
-static int pcm512x_set_dai_sysclk(struct snd_soc_dai *codec_dai,
-		int clk_id, unsigned int freq, int dir)
+
+///////////////////////////
+//	Tyler's Codec Below
+
+///////////////////////////
+//	Private data
+#define HASMID(p)		((p)->regmap_mid != 0)
+#define HASWOOFER(p)	((p)->regmap_woofer != 0)
+#define HASTWEETER(p)	((p)->regmap_tweeter != 0)
+#define ISCODEC(p)		(HASMID(p) && HASWOOFER(p))
+struct pcm512x_priv {
+	struct regmap *regmap;
+	struct regmap *regmap_mid;
+	struct regmap *regmap_woofer;
+	struct regmap *regmap_tweeter;
+};
+
+///////////////////////////
+//	Registers
+static const struct reg_default pcm512x_reg_defaults[] = {
+	{ PCM512x_RESET,             0x00 },
+	{ PCM512x_POWER,             0x00 },
+	{ PCM512x_MUTE,              0x00 },
+	{ PCM512x_DSP,               0x00 },
+	{ PCM512x_PLL_REF,           0x00 },
+	{ PCM512x_DAC_REF,           0x00 },
+	{ PCM512x_DAC_ROUTING,       0x11 },
+	{ PCM512x_DSP_PROGRAM,       0x01 },
+	{ PCM512x_CLKDET,            0x00 },
+	{ PCM512x_AUTO_MUTE,         0x00 },
+	{ PCM512x_ERROR_DETECT,      0x00 },
+	{ PCM512x_DIGITAL_VOLUME_1,  0x00 },
+	{ PCM512x_DIGITAL_VOLUME_2,  0x30 },
+	{ PCM512x_DIGITAL_VOLUME_3,  0x30 },
+	{ PCM512x_DIGITAL_MUTE_1,    0x22 },
+	{ PCM512x_DIGITAL_MUTE_2,    0x00 },
+	{ PCM512x_DIGITAL_MUTE_3,    0x07 },
+	{ PCM512x_OUTPUT_AMPLITUDE,  0x00 },
+	{ PCM512x_ANALOG_GAIN_CTRL,  0x00 },
+	{ PCM512x_UNDERVOLTAGE_PROT, 0x00 },
+	{ PCM512x_ANALOG_MUTE_CTRL,  0x00 },
+	{ PCM512x_ANALOG_GAIN_BOOST, 0x00 },
+	{ PCM512x_VCOM_CTRL_1,       0x00 },
+	{ PCM512x_VCOM_CTRL_2,       0x01 },
+	{ PCM512x_BCLK_LRCLK_CFG,    0x00 },
+	{ PCM512x_MASTER_MODE,       0x7c },
+	{ PCM512x_GPIO_DACIN,        0x00 },
+	{ PCM512x_GPIO_PLLIN,        0x00 },
+	{ PCM512x_SYNCHRONIZE,       0x10 },
+	{ PCM512x_PLL_COEFF_0,       0x00 },
+	{ PCM512x_PLL_COEFF_1,       0x00 },
+	{ PCM512x_PLL_COEFF_2,       0x00 },
+	{ PCM512x_PLL_COEFF_3,       0x00 },
+	{ PCM512x_PLL_COEFF_4,       0x00 },
+	{ PCM512x_DSP_CLKDIV,        0x00 },
+	{ PCM512x_DAC_CLKDIV,        0x00 },
+	{ PCM512x_NCP_CLKDIV,        0x00 },
+	{ PCM512x_OSR_CLKDIV,        0x00 },
+	{ PCM512x_MASTER_CLKDIV_1,   0x00 },
+	{ PCM512x_MASTER_CLKDIV_2,   0x00 },
+	{ PCM512x_FS_SPEED_MODE,     0x00 },
+	{ PCM512x_IDAC_1,            0x01 },
+	{ PCM512x_IDAC_2,            0x00 },
+};
+static bool pcm512x_readable(struct device *dev, unsigned int reg)
 {
-    printk("JDS - pcm512x_set_dai_sysclk freq %d\n", freq);
+	switch (reg) {
+	case PCM512x_RESET:
+	case PCM512x_POWER:
+	case PCM512x_MUTE:
+	case PCM512x_PLL_EN:
+	case PCM512x_SPI_MISO_FUNCTION:
+	case PCM512x_DSP:
+	case PCM512x_GPIO_EN:
+	case PCM512x_BCLK_LRCLK_CFG:
+	case PCM512x_DSP_GPIO_INPUT:
+	case PCM512x_MASTER_MODE:
+	case PCM512x_PLL_REF:
+	case PCM512x_DAC_REF:
+	case PCM512x_GPIO_DACIN:
+	case PCM512x_GPIO_PLLIN:
+	case PCM512x_SYNCHRONIZE:
+	case PCM512x_PLL_COEFF_0:
+	case PCM512x_PLL_COEFF_1:
+	case PCM512x_PLL_COEFF_2:
+	case PCM512x_PLL_COEFF_3:
+	case PCM512x_PLL_COEFF_4:
+	case PCM512x_DSP_CLKDIV:
+	case PCM512x_DAC_CLKDIV:
+	case PCM512x_NCP_CLKDIV:
+	case PCM512x_OSR_CLKDIV:
+	case PCM512x_MASTER_CLKDIV_1:
+	case PCM512x_MASTER_CLKDIV_2:
+	case PCM512x_FS_SPEED_MODE:
+	case PCM512x_IDAC_1:
+	case PCM512x_IDAC_2:
+	case PCM512x_ERROR_DETECT:
+	case PCM512x_I2S_1:
+	case PCM512x_I2S_2:
+	case PCM512x_DAC_ROUTING:
+	case PCM512x_DSP_PROGRAM:
+	case PCM512x_CLKDET:
+	case PCM512x_AUTO_MUTE:
+	case PCM512x_DIGITAL_VOLUME_1:
+	case PCM512x_DIGITAL_VOLUME_2:
+	case PCM512x_DIGITAL_VOLUME_3:
+	case PCM512x_DIGITAL_MUTE_1:
+	case PCM512x_DIGITAL_MUTE_2:
+	case PCM512x_DIGITAL_MUTE_3:
+	case PCM512x_GPIO_OUTPUT_1:
+	case PCM512x_GPIO_OUTPUT_2:
+	case PCM512x_GPIO_OUTPUT_3:
+	case PCM512x_GPIO_OUTPUT_4:
+	case PCM512x_GPIO_OUTPUT_5:
+	case PCM512x_GPIO_OUTPUT_6:
+	case PCM512x_GPIO_CONTROL_1:
+	case PCM512x_GPIO_CONTROL_2:
+	case PCM512x_OVERFLOW:
+	case PCM512x_RATE_DET_1:
+	case PCM512x_RATE_DET_2:
+	case PCM512x_RATE_DET_3:
+	case PCM512x_RATE_DET_4:
+	case PCM512x_CLOCK_STATUS:
+	case PCM512x_ANALOG_MUTE_DET:
+	case PCM512x_SHORT_DET:
+	case PCM512x_POWER_STATE:
+	case PCM512x_GPIN:
+	case PCM512x_DIGITAL_MUTE_DET:
+	case PCM512x_OUTPUT_AMPLITUDE:
+	case PCM512x_ANALOG_GAIN_CTRL:
+	case PCM512x_UNDERVOLTAGE_PROT:
+	case PCM512x_ANALOG_MUTE_CTRL:
+	case PCM512x_ANALOG_GAIN_BOOST:
+	case PCM512x_VCOM_CTRL_1:
+	case PCM512x_VCOM_CTRL_2:
+	case PCM512x_CRAM_CTRL:
+	case PCM512x_FLEX_A:
+	case PCM512x_FLEX_B:
+		return true;
+	default:
+		/* There are 256 raw register addresses */
+		return reg < 0xff;
+	}
+}
+static bool pcm512x_volatile(struct device *dev, unsigned int reg)
+{
+	switch (reg) {
+	case PCM512x_PLL_EN:
+	case PCM512x_OVERFLOW:
+	case PCM512x_RATE_DET_1:
+	case PCM512x_RATE_DET_2:
+	case PCM512x_RATE_DET_3:
+	case PCM512x_RATE_DET_4:
+	case PCM512x_CLOCK_STATUS:
+	case PCM512x_ANALOG_MUTE_DET:
+	case PCM512x_GPIN:
+	case PCM512x_DIGITAL_MUTE_DET:
+	case PCM512x_CRAM_CTRL:
+	case PCM512x_SHORT_DET:
+	case PCM512x_POWER_STATE:
+		return true;
+	default:
+		/* There are 256 raw register addresses */
+		return reg < 0xff;
+	}
+}
+static const struct regmap_range_cfg pcm512x_range = {
+	.name = "Pages", .range_min = PCM512x_VIRT_BASE,
+	.range_max = PCM512x_MAX_REGISTER,
+	.selector_reg = PCM512x_PAGE,
+	.selector_mask = 0xff,
+	.window_start = 0, .window_len = 0x100,
+};
+const struct regmap_config pcm512x_regmap = {
+	.reg_bits = 8,
+	.val_bits = 8,
+
+	.readable_reg = pcm512x_readable,
+	.volatile_reg = pcm512x_volatile,
+
+	.ranges = &pcm512x_range,
+	.num_ranges = 1,
+
+	.max_register = PCM512x_MAX_REGISTER,
+	.reg_defaults = pcm512x_reg_defaults,
+	.num_reg_defaults = ARRAY_SIZE(pcm512x_reg_defaults),
+	.cache_type = REGCACHE_RBTREE,
+};
+EXPORT_SYMBOL_GPL(pcm512x_regmap);
+
+///////////////////////////
+//	Widgets
+static const DECLARE_TLV_DB_SCALE(digital_tlv, -10350, 50, 1);
+static const DECLARE_TLV_DB_SCALE(analog_tlv, -600, 600, 0);
+static const DECLARE_TLV_DB_SCALE(boost_tlv, 0, 80, 0);
+
+static const char * const pcm512x_dsp_program_texts[] = {
+	"FIR interpolation with de-emphasis",
+	"Low latency IIR with de-emphasis",
+	"High attenuation with de-emphasis",
+	"Fixed process flow",
+	"Ringing-less low latency FIR",
+};
+
+static const unsigned int pcm512x_dsp_program_values[] = {
+	1,
+	2,
+	3,
+	5,
+	7,
+};
+
+static SOC_VALUE_ENUM_SINGLE_DECL(pcm512x_dsp_program,
+				  PCM512x_DSP_PROGRAM, 0, 0x1f,
+				  pcm512x_dsp_program_texts,
+				  pcm512x_dsp_program_values);
+
+static const char * const pcm512x_clk_missing_text[] = {
+	"1s", "2s", "3s", "4s", "5s", "6s", "7s", "8s"
+};
+
+static const struct soc_enum pcm512x_clk_missing =
+	SOC_ENUM_SINGLE(PCM512x_CLKDET, 0,  8, pcm512x_clk_missing_text);
+
+static const char * const pcm512x_autom_text[] = {
+	"21ms", "106ms", "213ms", "533ms", "1.07s", "2.13s", "5.33s", "10.66s"
+};
+
+static const struct soc_enum pcm512x_autom_l =
+	SOC_ENUM_SINGLE(PCM512x_AUTO_MUTE, PCM512x_ATML_SHIFT, 8,
+			pcm512x_autom_text);
+
+static const struct soc_enum pcm512x_autom_r =
+	SOC_ENUM_SINGLE(PCM512x_AUTO_MUTE, PCM512x_ATMR_SHIFT, 8,
+			pcm512x_autom_text);
+
+static const char * const pcm512x_ramp_rate_text[] = {
+	"1 sample/update", "2 samples/update", "4 samples/update",
+	"Immediate"
+};
+
+static const struct soc_enum pcm512x_vndf =
+	SOC_ENUM_SINGLE(PCM512x_DIGITAL_MUTE_1, PCM512x_VNDF_SHIFT, 4,
+			pcm512x_ramp_rate_text);
+
+static const struct soc_enum pcm512x_vnuf =
+	SOC_ENUM_SINGLE(PCM512x_DIGITAL_MUTE_1, PCM512x_VNUF_SHIFT, 4,
+			pcm512x_ramp_rate_text);
+
+static const struct soc_enum pcm512x_vedf =
+	SOC_ENUM_SINGLE(PCM512x_DIGITAL_MUTE_2, PCM512x_VEDF_SHIFT, 4,
+			pcm512x_ramp_rate_text);
+
+static const char * const pcm512x_ramp_step_text[] = {
+	"4dB/step", "2dB/step", "1dB/step", "0.5dB/step"
+};
+
+static const struct soc_enum pcm512x_vnds =
+	SOC_ENUM_SINGLE(PCM512x_DIGITAL_MUTE_1, PCM512x_VNDS_SHIFT, 4,
+			pcm512x_ramp_step_text);
+
+static const struct soc_enum pcm512x_vnus =
+	SOC_ENUM_SINGLE(PCM512x_DIGITAL_MUTE_1, PCM512x_VNUS_SHIFT, 4,
+			pcm512x_ramp_step_text);
+
+static const struct soc_enum pcm512x_veds =
+	SOC_ENUM_SINGLE(PCM512x_DIGITAL_MUTE_2, PCM512x_VEDS_SHIFT, 4,
+			pcm512x_ramp_step_text);
+
+static const struct snd_kcontrol_new pcm512x_controls[] = {
+	SOC_DOUBLE_R_TLV("Digital Playback Volume", PCM512x_DIGITAL_VOLUME_2,
+			PCM512x_DIGITAL_VOLUME_3, 0, 255, 1, digital_tlv),
+	SOC_DOUBLE_TLV("Analogue Playback Volume", PCM512x_ANALOG_GAIN_CTRL,
+	    	PCM512x_LAGN_SHIFT, PCM512x_RAGN_SHIFT, 1, 1, analog_tlv),
+	SOC_DOUBLE_TLV("Analogue Playback Boost Volume", PCM512x_ANALOG_GAIN_BOOST,
+			PCM512x_AGBL_SHIFT, PCM512x_AGBR_SHIFT, 1, 0, boost_tlv),
+	SOC_DOUBLE("Digital Playback Switch", PCM512x_MUTE, PCM512x_RQML_SHIFT,
+	   		PCM512x_RQMR_SHIFT, 1, 1),
+
+	SOC_SINGLE("Deemphasis Switch", PCM512x_DSP, PCM512x_DEMP_SHIFT, 1, 1),
+	SOC_ENUM("DSP Program", pcm512x_dsp_program),
+
+	SOC_ENUM("Clock Missing Period", pcm512x_clk_missing),
+	SOC_ENUM("Auto Mute Time Left", pcm512x_autom_l),
+	SOC_ENUM("Auto Mute Time Right", pcm512x_autom_r),
+	SOC_SINGLE("Auto Mute Mono Switch", PCM512x_DIGITAL_MUTE_3,
+	   		PCM512x_ACTL_SHIFT, 1, 0),
+	SOC_DOUBLE("Auto Mute Switch", PCM512x_DIGITAL_MUTE_3, PCM512x_AMLE_SHIFT,
+	   		PCM512x_AMRE_SHIFT, 1, 0),
+
+	SOC_ENUM("Volume Ramp Down Rate", pcm512x_vndf),
+	SOC_ENUM("Volume Ramp Down Step", pcm512x_vnds),
+	SOC_ENUM("Volume Ramp Up Rate", pcm512x_vnuf),
+	SOC_ENUM("Volume Ramp Up Step", pcm512x_vnus),
+	SOC_ENUM("Volume Ramp Down Emergency Rate", pcm512x_vedf),
+	SOC_ENUM("Volume Ramp Down Emergency Step", pcm512x_veds),
+};
+static const struct snd_soc_dapm_widget pcm512x_dapm_widgets[] = {
+	SND_SOC_DAPM_DAC("DACL", NULL, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_DAC("DACR", NULL, SND_SOC_NOPM, 0, 0),
+
+	SND_SOC_DAPM_OUTPUT("OUTL"),
+	SND_SOC_DAPM_OUTPUT("OUTR"),
+};
+static const struct snd_soc_dapm_route pcm512x_dapm_routes[] = {
+	{ "DACL", NULL, "Playback" },
+	{ "DACR", NULL, "Playback" },
+
+	{ "OUTL", NULL, "DACL" },
+	{ "OUTR", NULL, "DACR" },
+};
+/***
+static const u32 pcm512x_dai_rates[] = {
+	8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000,
+	88200, 96000, 176400, 192000, 384000,
+};
+
+static const struct snd_pcm_hw_constraint_list constraints_slave = {
+	.count = ARRAY_SIZE(pcm512x_dai_rates),
+	.list  = pcm512x_dai_rates,
+};
+***/
+static int pcm512x_set_bias_level(struct snd_soc_codec *codec,
+				  enum snd_soc_bias_level level)
+{
+	struct pcm512x_priv *pcm512x = dev_get_drvdata(codec->dev);
+	int ret;
+
+	switch (level) {
+	case SND_SOC_BIAS_ON:
+	case SND_SOC_BIAS_PREPARE:
+		break;
+
+	case SND_SOC_BIAS_STANDBY:
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_POWER,
+					 PCM512x_RQST, 0);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to remove standby: %d\n",
+				ret);
+			return ret;
+		}
+		break;
+
+	case SND_SOC_BIAS_OFF:
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_POWER,
+					 PCM512x_RQST, PCM512x_RQST);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to request standby: %d\n",
+				ret);
+			return ret;
+		}
+		break;
+	}
+
+	return 0;
+}
+static struct snd_soc_codec_driver pcm512x_codec_driver = {
+	.set_bias_level = pcm512x_set_bias_level,
+	.idle_bias_off = true,
+
+	.controls = pcm512x_controls,
+	.num_controls = ARRAY_SIZE(pcm512x_controls),
+	.dapm_widgets = pcm512x_dapm_widgets,
+	.num_dapm_widgets = ARRAY_SIZE(pcm512x_dapm_widgets),
+	.dapm_routes = pcm512x_dapm_routes,
+	.num_dapm_routes = ARRAY_SIZE(pcm512x_dapm_routes),
+};
+
+///////////////////////////
+//	Control callbacks
+static int pcm512x_startup(struct snd_pcm_substream *substream,
+			       struct snd_soc_dai *dai)
+{
+    printk("TJB: pcm512x_startup\n");
 	return 0;
 }
 
+static int pcm512x_hw_params(struct snd_pcm_substream *substream,
+			     struct snd_pcm_hw_params *params,
+			     struct snd_soc_dai *dai)
+{
+    printk("TJB: pcm512x_hw_params\n");
+	return 0;
+}
+
+static int pcm512x_set_sysclk(struct snd_soc_dai *codec_dai,
+		int clk_id, unsigned int freq, int dir)
+{
+    printk("TJB: pcm512x_set_dai_sysclk freq %d\n", freq);
+	return 0;
+}
 
 static int pcm512x_set_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 {
-	struct snd_soc_codec *codec = dai->codec;
-	struct pcm512x_priv *pcm512x = snd_soc_codec_get_drvdata(codec);
+//	struct snd_soc_codec *codec = dai->codec;
+//	struct pcm512x_priv *pcm512x = snd_soc_codec_get_drvdata(codec);
 
-	pcm512x->fmt = fmt;
+    printk("TJB: pcm512x_set_fmt %d\n", fmt);
+
+//	pcm512x->fmt = fmt;
 
 	return 0;
 }
 
 static const struct snd_soc_dai_ops pcm512x_dai_ops = {
-//	.startup = pcm512x_dai_startup,
+	.startup = pcm512x_startup,
 	.hw_params = pcm512x_hw_params,
 	.set_fmt = pcm512x_set_fmt,
-	.set_sysclk = pcm512x_set_dai_sysclk,
+	.set_sysclk = pcm512x_set_sysclk,
 };
 
 static struct snd_soc_dai_driver pcm512x_dai = {
@@ -1753,50 +2138,10 @@ static struct snd_soc_dai_driver pcm512x_dai = {
 	.ops = &pcm512x_dai_ops,
 };
 
-static struct snd_soc_codec_driver pcm512x_codec_driver = {
-	.set_bias_level = pcm512x_set_bias_level,
-	.idle_bias_off = true,
 
-	.controls = pcm512x_controls,
-	.num_controls = ARRAY_SIZE(pcm512x_controls),
-	.dapm_widgets = pcm512x_dapm_widgets,
-	.num_dapm_widgets = ARRAY_SIZE(pcm512x_dapm_widgets),
-	.dapm_routes = pcm512x_dapm_routes,
-	.num_dapm_routes = ARRAY_SIZE(pcm512x_dapm_routes),
-};
 
-static const struct regmap_range_cfg pcm512x_range = {
-	.name = "Pages", .range_min = PCM512x_VIRT_BASE,
-	.range_max = PCM512x_MAX_REGISTER,
-	.selector_reg = PCM512x_PAGE,
-	.selector_mask = 0xff,
-	.window_start = 0, .window_len = 0x100,
-};
-
-const struct regmap_config pcm512x_regmap = {
-	.reg_bits = 8,
-	.val_bits = 8,
-
-	.readable_reg = pcm512x_readable,
-	.volatile_reg = pcm512x_volatile,
-
-	.ranges = &pcm512x_range,
-	.num_ranges = 1,
-
-	.max_register = PCM512x_MAX_REGISTER,
-	.reg_defaults = pcm512x_reg_defaults,
-	.num_reg_defaults = ARRAY_SIZE(pcm512x_reg_defaults),
-	.cache_type = REGCACHE_RBTREE,
-};
-EXPORT_SYMBOL_GPL(pcm512x_regmap);
-
-void pcm512x_set_i2c(struct i2c_client *i2c)
-{
-	printk("TJB: pcm512x_set_i2c: addr = 0x%x\n", i2c->addr);
-	the_i2c = i2c;
-}
-EXPORT_SYMBOL_GPL(pcm512x_set_i2c);
-
+///////////////////////////
+//	Codec
 int pcm512x_probe(struct device *dev, struct regmap *regmap)
 {
 	struct pcm512x_priv *pcm512x;
@@ -1900,66 +2245,13 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 		goto err;
 	}
 
-	pcm512x->sclk = devm_clk_get(dev, NULL);
-	if (PTR_ERR(pcm512x->sclk) == -EPROBE_DEFER)
-		return -EPROBE_DEFER;
-	if (!IS_ERR(pcm512x->sclk)) {
-		ret = clk_prepare_enable(pcm512x->sclk);
-		if (ret != 0) {
-			dev_err(dev, "Failed to enable SCLK: %d\n", ret);
-			return ret;
-		}
-	}
-
 	/* Default to standby mode */
 	ret = regmap_update_bits(pcm512x->regmap, PCM512x_POWER,
 				 PCM512x_RQST, PCM512x_RQST);
-	if (ret != 0) {
-		dev_err(dev, "Failed to request standby: %d\n",
-			ret);
-		goto err_clk;
-	}
 
 	pm_runtime_set_active(dev);
 	pm_runtime_enable(dev);
 	pm_runtime_idle(dev);
-
-#ifdef CONFIG_OF
-	if (dev->of_node) {
-		const struct device_node *np = dev->of_node;
-		u32 val;
-
-		if (of_property_read_u32(np, "pll-in", &val) >= 0) {
-			if (val > 6) {
-				dev_err(dev, "Invalid pll-in\n");
-				ret = -EINVAL;
-				goto err_clk;
-			}
-			pcm512x->pll_in = val;
-		}
-
-		if (of_property_read_u32(np, "pll-out", &val) >= 0) {
-			if (val > 6) {
-				dev_err(dev, "Invalid pll-out\n");
-				ret = -EINVAL;
-				goto err_clk;
-			}
-			pcm512x->pll_out = val;
-		}
-
-		if (!pcm512x->pll_in != !pcm512x->pll_out) {
-			dev_err(dev,
-				"Error: both pll-in and pll-out, or none\n");
-			ret = -EINVAL;
-			goto err_clk;
-		}
-		if (pcm512x->pll_in && pcm512x->pll_in == pcm512x->pll_out) {
-			dev_err(dev, "Error: pll-in == pll-out\n");
-			ret = -EINVAL;
-			goto err_clk;
-		}
-	}
-#endif
 
 	ret = snd_soc_register_codec(dev, &pcm512x_codec_driver, &pcm512x_dai, 1);
 	if (ret != 0) {
@@ -1971,9 +2263,6 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 
 err_pm:
 	pm_runtime_disable(dev);
-err_clk:
-	if (!IS_ERR(pcm512x->sclk))
-		clk_disable_unprepare(pcm512x->sclk);
 err:
 #if 0
 	regulator_bulk_disable(ARRAY_SIZE(pcm512x->supplies),
@@ -1985,12 +2274,8 @@ EXPORT_SYMBOL_GPL(pcm512x_probe);
 
 void pcm512x_remove(struct device *dev)
 {
-	struct pcm512x_priv *pcm512x = dev_get_drvdata(dev);
-
 	snd_soc_unregister_codec(dev);
 	pm_runtime_disable(dev);
-	if (!IS_ERR(pcm512x->sclk))
-		clk_disable_unprepare(pcm512x->sclk);
 #if 0		
 	regulator_bulk_disable(ARRAY_SIZE(pcm512x->supplies),
 			       pcm512x->supplies);
@@ -2018,8 +2303,6 @@ static int pcm512x_suspend(struct device *dev)
 		return ret;
 	}
 #endif
-	if (!IS_ERR(pcm512x->sclk))
-		clk_disable_unprepare(pcm512x->sclk);
 
 	return 0;
 }
@@ -2029,13 +2312,6 @@ static int pcm512x_resume(struct device *dev)
 	struct pcm512x_priv *pcm512x = dev_get_drvdata(dev);
 	int ret;
 
-	if (!IS_ERR(pcm512x->sclk)) {
-		ret = clk_prepare_enable(pcm512x->sclk);
-		if (ret != 0) {
-			dev_err(dev, "Failed to enable SCLK: %d\n", ret);
-			return ret;
-		}
-	}
 #if 0
 	ret = regulator_bulk_enable(ARRAY_SIZE(pcm512x->supplies),
 				    pcm512x->supplies);
