@@ -1,7 +1,7 @@
 /*
- * sunxi_pcm5122.c  --  SoC audio for Allwinner
+ * sunxi_pcm512x.c  --  SoC audio for Allwinner
  *
- * Driver for Allwinner pcm5122 audio
+ * Driver for Allwinner pcm512x audio
  *
  *  This program is free software; you can redistribute  it and/or modify it
  *  under  the terms of  the GNU General  Public License as published by the
@@ -29,7 +29,7 @@
 #define	DBG(x...)
 #endif
 
-static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
+static int sunxi_pcm512x_hw_params(struct snd_pcm_substream *substream,
 	struct snd_pcm_hw_params *params)
 {
 	int ret  = 0;
@@ -41,7 +41,7 @@ static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
 	struct sunxi_tdm_info  *sunxi_daudio = snd_soc_dai_get_drvdata(cpu_dai);
 	unsigned long sample_rate = params_rate(params);
 
-	printk("TJB: Enter sunxi_pcm5122_hw_params\n");
+	printk("TJB: sunxi_pcm512x_hw_params\n");
 
 	/*Select sample frequency*/
 	switch (sample_rate) {
@@ -62,84 +62,85 @@ static int sunxi_pcm5122_hw_params(struct snd_pcm_substream *substream,
 	/*Codec is slave*/
 	ret = snd_soc_dai_set_fmt(codec_dai, SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_NB_NF | SND_SOC_DAIFMT_CBS_CFS);
 	if (ret < 0) {
-		printk("TJB: sunxi_pcm5122_hw_params - failed codec is slave\n");
+		printk("TJB: sunxi_pcm512x_hw_params - failed codec is slave\n");
 		return ret;
 	}
 
 	/*Cpu is master*/
 	ret = snd_soc_dai_set_fmt(cpu_dai, (sunxi_daudio->audio_format| (sunxi_daudio->signal_inversion <<8) | (sunxi_daudio->daudio_master <<12)));
 	if (ret < 0) {
-		printk("TJB: sunxi_pcm5122_hw_params - failed cpu is master\n");
+		printk("TJB: sunxi_pcm512x_hw_params - failed cpu is master\n");
 		return ret;
 	}
 
 	/*Set the sysclk for the cpu side*/
 	ret = snd_soc_dai_set_sysclk(cpu_dai, 0 , freq, 0);
 	if (ret < 0) {
-		printk("TJB: sunxi_pcm5122_hw_params - failed set cpu freq\n");
+		printk("TJB: sunxi_pcm512x_hw_params - failed set cpu freq\n");
 		return ret;
 	}
 
 	/*Set the cpu clock dividers*/
 	ret = snd_soc_dai_set_clkdiv(cpu_dai, 0, sample_rate);
 	if (ret < 0) {
-		printk("TJB: sunxi_pcm5122_hw_params - failed set cpu clkdiv\n");
+		printk("TJB: sunxi_pcm512x_hw_params - failed set cpu clkdiv\n");
 		return ret;
 	}
 
 	return 0;
 }
 
-static int sunxi_pcm5122_init(struct snd_soc_pcm_runtime *rtd)
+static int sunxi_pcm512x_init(struct snd_soc_pcm_runtime *rtd)
 {
-	printk("TJB: Enter sunxi_pcm5122_init\n");
+	printk("TJB: sunxi_pcm512x_init\n");
 	return 0;
 }
 
-static struct snd_soc_ops sunxi_pcm5122_ops = {
-	  .hw_params = sunxi_pcm5122_hw_params,
+static struct snd_soc_ops sunxi_pcm512x_ops = {
+	  .hw_params = sunxi_pcm512x_hw_params,
 };
 
-static struct snd_soc_dai_link sunxi_pcm5122_dai = {
-	.name = "pcm5122",
+static struct snd_soc_dai_link sunxi_pcm512x_dai = {
+	.name = "pcm512x",
 	.stream_name = "SUNXI-TDM0",
 	.cpu_dai_name = "sunxi-daudio",
 	.platform_name = "sunxi-daudio",
-	.init = sunxi_pcm5122_init,
-	.ops = &sunxi_pcm5122_ops,
+	.init = sunxi_pcm512x_init,
+	.ops = &sunxi_pcm512x_ops,
 };
 
-static struct snd_soc_card sunxi_pcm5122_snd_card = {
-	.name = "sndpcm5122",
-	.dai_link = &sunxi_pcm5122_dai,
+static struct snd_soc_card sunxi_pcm512x_snd_card = {
+	.name = "sndpcm512x",
+	.dai_link = &sunxi_pcm512x_dai,
 	.num_links = 1,
 };
 
-static int sunxi_pcm5122_audio_probe(struct platform_device *pdev)
+static int sunxi_pcm512x_audio_probe(struct platform_device *pdev)
 {
 	int ret = 0;
 	struct device_node *np = pdev->dev.of_node;
-	struct snd_soc_card *card = &sunxi_pcm5122_snd_card;
+	struct snd_soc_card *card = &sunxi_pcm512x_snd_card;
 
-	printk("TJB: Enter sunxi_pcm5122_audio_probe: pdev->name = %s\n", pdev->name);
+	printk("TJB: sunxi_pcm512x_audio_probe: pdev->name = %s\n", pdev->name);
 
 	//	Link the CPU
-	sunxi_pcm5122_dai.cpu_dai_name = NULL;
-	sunxi_pcm5122_dai.cpu_of_node = of_parse_phandle(np, "sunxi,pcm5122-controller", 0);
-	if (!sunxi_pcm5122_dai.cpu_of_node) {
+	sunxi_pcm512x_dai.cpu_dai_name = NULL;
+	sunxi_pcm512x_dai.cpu_of_node = of_parse_phandle(np, "sunxi,pcm512x-controller", 0);
+	if (!sunxi_pcm512x_dai.cpu_of_node) {
 		dev_err(&pdev->dev,
-			"Property 'sunxi,pcm5122-controller' missing or invalid\n");
+			"Property 'sunxi,pcm512x-controller' missing or invalid\n");
 		return -EINVAL;
 	}
 
 	//	Link the platform
-	sunxi_pcm5122_dai.platform_name = NULL;
-	sunxi_pcm5122_dai.platform_of_node = sunxi_pcm5122_dai.cpu_of_node;
+	sunxi_pcm512x_dai.platform_name = NULL;
+	sunxi_pcm512x_dai.platform_of_node = sunxi_pcm512x_dai.cpu_of_node;
 
 	//	Link the codec
-	sunxi_pcm5122_dai.codec_dai_name = NULL;
-	sunxi_pcm5122_dai.codec_of_node = of_parse_phandle(np, "digispeaker,codec", 0);
-	if (!sunxi_pcm5122_dai.codec_of_node) {
+	sunxi_pcm512x_dai.codec_name = NULL;
+	sunxi_pcm512x_dai.codec_dai_name = "pcm512x";
+	sunxi_pcm512x_dai.codec_of_node = of_parse_phandle(np, "digispeaker,codec", 0);
+	if (!sunxi_pcm512x_dai.codec_of_node) {
 		dev_err(&pdev->dev,
 			"Property 'digispeaker,codec' missing or invalid");
 		return -EINVAL;
@@ -154,44 +155,44 @@ static int sunxi_pcm5122_audio_probe(struct platform_device *pdev)
 	return ret;
 }
 
-static int sunxi_pcm5122_audio_remove(struct platform_device *pdev)
+static int sunxi_pcm512x_audio_remove(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = platform_get_drvdata(pdev);
 	snd_soc_unregister_card(card);
 	return 0;
 }
 
-static const struct of_device_id sunxi_pcm5122_of_match[] = {
-	{ .compatible = "allwinner,sunxi-pcm5122-machine", },
+static const struct of_device_id sunxi_pcm512x_of_match[] = {
+	{ .compatible = "allwinner,sunxi-pcm512x-machine", },
 	{},
 };
-MODULE_DEVICE_TABLE(of, sunxi_pcm5122_of_match);
+MODULE_DEVICE_TABLE(of, sunxi_pcm512x_of_match);
 
-static struct platform_driver sunxi_pcm5122_audio_driver = {
+static struct platform_driver sunxi_pcm512x_audio_driver = {
 	.driver         = {
-		.name   = "sndpcm5122",
+		.name   = "sndpcm512x",
 		.owner  = THIS_MODULE,
 		.pm = &snd_soc_pm_ops,
-		.of_match_table = of_match_ptr(sunxi_pcm5122_of_match),
+		.of_match_table = of_match_ptr(sunxi_pcm512x_of_match),
 	},
-	.probe	= sunxi_pcm5122_audio_probe,
-	.remove	= sunxi_pcm5122_audio_remove,
+	.probe	= sunxi_pcm512x_audio_probe,
+	.remove	= sunxi_pcm512x_audio_remove,
 };
 
-static int __init sunxi_sndpcm5122_init(void)
+static int __init sunxi_sndpcm512x_init(void)
 {
 	int err = 0;
-	if ((err = platform_driver_register(&sunxi_pcm5122_audio_driver)) < 0)
+	if ((err = platform_driver_register(&sunxi_pcm512x_audio_driver)) < 0)
 		return err;
 	return 0;
 }
-module_init(sunxi_sndpcm5122_init);
+module_init(sunxi_sndpcm512x_init);
 
-static void __exit sunxi_sndpcm5122_exit(void)
+static void __exit sunxi_sndpcm512x_exit(void)
 {
-	platform_driver_unregister(&sunxi_pcm5122_audio_driver);
+	platform_driver_unregister(&sunxi_pcm512x_audio_driver);
 }
-module_exit(sunxi_sndpcm5122_exit);
+module_exit(sunxi_sndpcm512x_exit);
 
 /* Module information */
 MODULE_AUTHOR("Allwinner");

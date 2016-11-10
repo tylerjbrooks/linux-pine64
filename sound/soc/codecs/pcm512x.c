@@ -25,6 +25,8 @@
 #include <linux/gcd.h>
 #include <linux/of.h>
 #include <linux/of_i2c.h>
+#include <linux/of_gpio.h>
+#include <linux/gpio.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/pcm_params.h>
@@ -1726,6 +1728,8 @@ struct pcm512x_priv {
 	struct regmap *regmap_mid;
 	struct regmap *regmap_woofer;
 	struct regmap *regmap_tweeter;
+	int mute;
+	int detect;
 };
 
 ///////////////////////////
@@ -2123,7 +2127,7 @@ static const struct snd_soc_dai_ops pcm512x_dai_ops = {
 };
 
 static struct snd_soc_dai_driver pcm512x_dai = {
-	.name = "pcm512x-hifi",
+	.name = "pcm512x",
 	.playback = {
 		.stream_name = "Playback",
 		.channels_min = 2,
@@ -2146,12 +2150,10 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 {
 	struct pcm512x_priv *pcm512x;
 	struct device_node *dn;
+	int gpio;
 	int ret;
 
 	printk("TJB: pcm512x_probe: dev->of_node=%s\n", dev->of_node->name);
-	printk("TJB: pcm512x_probe: dev->driver-name=%s\n", dev->driver->name);
-	printk("TJB: pcm512x_probe: i2c_client* dev=%p\n", 
-		of_find_i2c_device_by_node(dev->of_node) );
 
 	//	Allocate private driver memory
 	pcm512x = devm_kzalloc(dev, sizeof(struct pcm512x_priv), GFP_KERNEL);
@@ -2196,6 +2198,20 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 		}
 		pcm512x->regmap_tweeter = priv->regmap;
 		of_node_put(dn);
+	}
+
+	//	Find the 'digispeaker,mute' gpio
+	gpio = of_get_named_gpio(dev->of_node, "digispeaker,gpio-mute", 0);
+	if (gpio_is_valid(gpio)) {
+		printk("TJB: pcm512x_probe: mute=%d\n", gpio);
+		pcm512x->mute = gpio;
+	}
+
+	//	Find the 'digispeaker,detect' gpio
+	gpio = of_get_named_gpio(dev->of_node, "digispeaker,gpio-detect", 0);
+	if (gpio_is_valid(gpio)) {
+		printk("TJB: pcm512x_probe: detect=%d\n", gpio);
+		pcm512x->detect = gpio;
 	}
 
 
