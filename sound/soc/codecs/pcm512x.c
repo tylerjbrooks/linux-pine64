@@ -27,12 +27,17 @@
 #include <linux/of_i2c.h>
 #include <linux/of_gpio.h>
 #include <linux/gpio.h>
+#include <linux/delay.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
 #include <sound/pcm_params.h>
 #include <sound/tlv.h>
 
 #include "pcm512x.h"
+#include "pcm512x-mid-bandpass.h"
+#include "pcm512x-mid-hipass.h"
+#include "pcm512x-tweeter.h"
+#include "pcm512x-woofer.h"
 
 #if 0
 #define DIV_ROUND_CLOSEST_ULL(x, divisor)(		\
@@ -2146,6 +2151,35 @@ static struct snd_soc_dai_driver pcm512x_dai = {
 
 ///////////////////////////
 //	Codec
+static int pcm512x_load_profile(struct regmap *regmap, struct cfg_prof *prof, int cnt)
+{
+	int i;
+	int ret;
+	int page;
+
+	printk("TJB: pcm512x_load_profile: cnt = %d\n", cnt);
+
+	page = 0;	//	Default register page
+	for (i = 0; i < cnt; i++) {
+
+		//	Change the default register page
+		if (prof[i].reg == PCM512x_PAGE) {
+			page = prof[i].val;
+			continue;
+		}
+
+		//	Pause between writes
+//		udelay(10);
+//		usleep_range(100, 250);
+
+		//	Write the register
+		ret = regmap_write(regmap, PCM512x_PAGE_BASE(page) + prof[i].reg, prof[i].val);
+		if (ret != 0)
+			return ret;
+	}
+	
+	return 0;
+}
 int pcm512x_probe(struct device *dev, struct regmap *regmap)
 {
 	struct pcm512x_priv *pcm512x;
@@ -2213,6 +2247,46 @@ int pcm512x_probe(struct device *dev, struct regmap *regmap)
 		printk("TJB: pcm512x_probe: detect=%d\n", gpio);
 		pcm512x->detect = gpio;
 	}
+
+	//	If this is the codec, then load the Hyperflow profiles into each TAS5756
+	if (ISCODEC(pcm512x)) {
+
+		//	Load the Mid profile
+		if (HASMID(pcm512x)) {
+			if (HASTWEETER(pcm512x)) {
+				ret = pcm512x_load_profile (pcm512x->regmap_mid, prof_mid_bandpass, 
+								sizeof(prof_mid_bandpass)/sizeof(struct cfg_prof));
+				if (ret != 0) {
+					return -EINVAL;
+				}
+			} else {
+				ret = pcm512x_load_profile (pcm512x->regmap_mid, prof_mid_hipass, 
+								sizeof(prof_mid_hipass)/sizeof(struct cfg_prof));
+				if (ret != 0) {
+					return -EINVAL;
+				}
+			}
+		}
+
+		//	Load the Woofer profile
+		if (HASWOOFER(pcm512x)) {
+			ret = pcm512x_load_profile (pcm512x->regmap_woofer, prof_woofer,
+							sizeof(prof_woofer)/sizeof(struct cfg_prof));
+			if (ret != 0) {
+				return -EINVAL;
+			}
+		}
+
+		//	Load the Tweeter profile
+		if (HASTWEETER(pcm512x)) {
+			ret = pcm512x_load_profile (pcm512x->regmap_tweeter, prof_tweeter,
+							sizeof(prof_tweeter)/sizeof(struct cfg_prof));
+			if (ret != 0) {
+				return -EINVAL;
+			}
+		}
+	}
+
 
 
 #if 0

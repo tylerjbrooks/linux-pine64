@@ -263,6 +263,12 @@
 #define PCM512x_AGBR_SHIFT 0
 #define PCM512x_AGBL_SHIFT 4
 
+struct cfg_prof 
+{
+	int reg;
+	int val;
+};
+
 extern const struct dev_pm_ops pcm512x_pm_ops;
 extern const struct regmap_config pcm512x_regmap;
 
