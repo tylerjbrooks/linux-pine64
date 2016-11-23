@@ -2090,18 +2090,147 @@ static struct snd_soc_codec_driver pcm512x_codec_driver = {
 
 ///////////////////////////
 //	Control callbacks
+static const u32 pcm512x_dai_rates[] = {
+	8000, 11025, 16000, 22050, 32000, 44100, 48000, 64000,
+	88200, 96000, 176400, 192000, 384000,
+};
+
+static const struct snd_pcm_hw_constraint_list constraints_slave = {
+	.count = ARRAY_SIZE(pcm512x_dai_rates),
+	.list  = pcm512x_dai_rates,
+};
+
 static int pcm512x_startup(struct snd_pcm_substream *substream,
 			       struct snd_soc_dai *dai)
 {
+	struct snd_soc_codec *codec = dai->codec;
+	struct pcm512x_priv *pcm512x = snd_soc_codec_get_drvdata(codec);
+
+	if (!ISCODEC(pcm512x)) 
+		return 0;
+
     printk("TJB: pcm512x_startup\n");
 	return 0;
 }
+
+/***
+static int pcm512x_update_bits_all (struct pcm512x_priv *priv,
+				unsigned int reg, unsigned int mask, unsigned int val)
+{
+	int ret;
+
+	if (HASMID(priv)) {
+		ret = regmap_update_bits(priv->regmap_mid, reg, mask, val);
+		if (ret)
+			return ret;
+	}
+	if (HASWOOFER(priv)) {
+		ret = regmap_update_bits(priv->regmap_woofer, reg, mask, val);
+		if (ret)
+			return ret;
+	}
+	if (HASTWEETER(priv)) {
+		ret = regmap_update_bits(priv->regmap_tweeter, reg, mask, val);
+		if (ret)
+			return ret;
+	}
+
+	return 0;
+}
+***/
 
 static int pcm512x_hw_params(struct snd_pcm_substream *substream,
 			     struct snd_pcm_hw_params *params,
 			     struct snd_soc_dai *dai)
 {
-    printk("TJB: pcm512x_hw_params\n");
+	struct snd_soc_codec *codec = dai->codec;
+	struct pcm512x_priv *pcm512x = snd_soc_codec_get_drvdata(codec);
+	int alen;
+//	int gpio;
+//	int clock_output;
+//	int master_mode;
+	int ret;
+
+	//	Only the codec sets these properties.
+	if (!ISCODEC(pcm512x))
+		return 0;
+
+    printk("TJB: pcm512x_hw_params: %u Hz, %u channels\n", 
+					params_rate(params), params_channels(params));
+
+	ret = snd_pcm_hw_constraint_list(substream->runtime, 0,
+					  SNDRV_PCM_HW_PARAM_RATE, &constraints_slave);
+    if (ret)
+        return ret;
+
+	switch (snd_pcm_format_width(params_format(params))) {
+	case 16:
+		alen = PCM512x_ALEN_16;
+		break;
+	case 20:
+		alen = PCM512x_ALEN_20;
+		break;
+	case 24:
+		alen = PCM512x_ALEN_24;
+		break;
+	case 32:
+		alen = PCM512x_ALEN_32;
+		break;
+	default:
+		dev_err(codec->dev, "Bad frame size: %d\n",
+			snd_pcm_format_width(params_format(params)));
+		return -EINVAL;
+	}
+/***
+	switch (pcm512x->fmt & SND_SOC_DAIFMT_MASTER_MASK) {
+	case SND_SOC_DAIFMT_CBS_CFS:
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_BCLK_LRCLK_CFG,
+					 PCM512x_BCKP | PCM512x_BCKO | PCM512x_LRKO, 0);
+		if (ret != 0) {
+			dev_err(codec->dev,
+				"Failed to enable slave mode: %d\n", ret);
+			return ret;
+		}
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_ERROR_DETECT,
+					 PCM512x_DCAS, 0);
+		if (ret != 0) {
+			dev_err(codec->dev,
+				"Failed to enable clock divider autoset: %d\n",
+				ret);
+			return ret;
+		}
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_I2S_1,
+				 PCM512x_ALEN, alen);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to set frame size: %d\n", ret);
+			return ret;
+		}
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_PLL_EN,
+					 PCM512x_PLLE, 0);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to disable pll: %d\n", ret);
+			return ret;
+		}
+
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_SYNCHRONIZE,
+				 PCM512x_RQSY, PCM512x_RQSY_HALT);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to halt clocks: %d\n", ret);
+			return ret;
+		}
+
+		ret = regmap_update_bits(pcm512x->regmap, PCM512x_SYNCHRONIZE,
+				 PCM512x_RQSY, PCM512x_RQSY_RESUME);
+		if (ret != 0) {
+			dev_err(codec->dev, "Failed to resume clocks: %d\n", ret);
+			return ret;
+		}
+		break;
+
+	default:
+		return -EINVAL;
+	}
+***/
 	return 0;
 }
 
